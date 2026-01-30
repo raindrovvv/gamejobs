@@ -6,9 +6,15 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// 설정 (환경변수 또는 하드코딩된 값 사용)
-const API_URL = process.env.SUPABASE_API_URL || 'https://mtfrnwqhklezedkmhatk.supabase.co/rest/v1/job-postings';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10ZnJud3Foa2xlemVka21oYXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MzY4OTIsImV4cCI6MjA4NTMxMjg5Mn0.J8rXEnatfH5jmNpVInf_YzFqknF8PLib0vAPsdBaXMI';
+// 설정 (보안을 위해 환경변수 필수 사용)
+const API_URL = process.env.SUPABASE_API_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+if (!API_URL || !SUPABASE_KEY) {
+    console.error('❌ 에러: SUPABASE_API_URL 또는 SUPABASE_KEY 환경변수가 설정되지 않았습니다.');
+    console.error('로컬 실행 시: export SUPABASE_KEY=... / 윈도우: set SUPABASE_KEY=...');
+    process.exit(1);
+}
 
 async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
     try {
