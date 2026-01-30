@@ -12,7 +12,7 @@
 const state = {
     jobs: [],
     filteredJobs: [],
-    currentView: 'links', // 채용사이트 탭을 기본으로
+    currentView: 'jobs', // 채용공고 탭을 기본으로
     filters: {
         company: '',
         category: '',
