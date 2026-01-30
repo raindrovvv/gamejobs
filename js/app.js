@@ -350,8 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initExternalLinks();
     loadJobs();
 
-    // 기본 뷰를 채용사이트로 설정
-    switchView('links');
+    // 기본 뷰를 채용공고로 설정 (사용자 요청)
+    switchView('jobs');
 
     // Initial Animations
     if (window.gsap) {
@@ -413,7 +413,11 @@ function initNavigation() {
 
     // Mobile menu toggle
     elements.mobileMenuBtn?.addEventListener('click', () => {
-        elements.mobileMenu?.classList.toggle('active');
+        const headerHeight = document.querySelector('.header').offsetHeight;
+        if (elements.mobileMenu) {
+            elements.mobileMenu.style.top = `${headerHeight}px`;
+            elements.mobileMenu.classList.toggle('active');
+        }
     });
 
     // Close mobile menu on outside click
