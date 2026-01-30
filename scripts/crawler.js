@@ -464,6 +464,38 @@ const Crawler = {
         }
 
         console.log(`[Sync] 최종 성공: ${successCount}건 등록 완료.`);
+
+        // 4. 만료된 공고 자동 처리 (마감일 지난 것들)
+        await this.cleanup();
+    },
+
+    // 만료 공고 비활성화 및 아주 오래된 데이터 삭제
+    async cleanup() {
+        console.log('[Cleanup] 만료된 공고 및 오래된 데이터 정리 중...');
+        try {
+            const today = new Date().toISOString().split('T')[0];
+
+            // 1. 마감기한이 지난 공고 비활성화 (is_active = false)
+            // Supabase에 직접 쿼리: deadline < today AND is_active = true
+            const deactivateRes = await api.patch('',
+                { is_active: false },
+                { params: { deadline: `lt.${today}`, is_active: 'eq.true' } }
+            );
+            console.log('[Cleanup] 마감 기한이 지난 공고를 비활성화했습니다.');
+
+            // 2. 너무 오래된 공고 삭제 (예: 마감된 지 30일 이상 지난 데이터)
+            const archiveDate = new Date();
+            archiveDate.setDate(archiveDate.getDate() - 30);
+            const archiveStr = archiveDate.toISOString().split('T')[0];
+
+            const deleteOldRes = await api.delete('', {
+                params: { deadline: `lt.${archiveStr}`, is_active: 'eq.false' }
+            });
+            console.log(`[Cleanup] 마감된 지 30일이 지난 오래된 데이터를 정리했습니다.`);
+
+        } catch (e) {
+            console.error('[Cleanup] 에러:', e.response ? JSON.stringify(e.response.data) : e.message);
+        }
     }
 };
 
