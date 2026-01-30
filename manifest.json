@@ -1,0 +1,16 @@
+{
+    "name": "게임잡스 - Game Jobs",
+    "short_name": "게임잡스",
+    "description": "한국 게임업계 신입/인턴 채용 정보를 한눈에!",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#6366f1",
+    "icons": [
+        {
+            "src": "images/icon.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}

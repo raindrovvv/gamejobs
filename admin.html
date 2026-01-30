@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 - 게임잡스</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <!-- Core & Modules -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+</head>
+
+<body>
+    <!-- 비밀번호 확인 모달 (페이지 로드 시 표시) -->
+    <div class="modal active" id="password-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-body">
+                <div class="password-confirm">
+                    <i class="fas fa-lock"></i>
+                    <h3>관리자 인증</h3>
+                    <p>관리자 페이지에 접근하려면<br>비밀번호를 입력하세요.</p>
+                    <form id="password-form">
+                        <div class="form-group">
+                            <input type="password" id="admin-password" placeholder="비밀번호 입력" required autofocus>
+                            <p class="error-message" id="password-error"
+                                style="display: none; color: #ef4444; font-size: 13px; margin-top: 8px;">
+                                <i class="fas fa-exclamation-circle"></i> 비밀번호가 올바르지 않습니다.
+                            </p>
+                        </div>
+                        <div class="password-actions">
+                            <a href="index.html" class="btn btn-outline">취소</a>
+                            <button type="submit" class="btn btn-primary">확인</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 (비밀번호 확인 전 숨김) -->
+    <div id="admin-content" style="display: none;">
+
+        <!-- 헤더 -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <a href="index.html" class="logo">
+                        <i class="fas fa-gamepad"></i>
+                        <span>게임잡스</span>
+                    </a>
+                    <div class="header-title">
+                        <h1><i class="fas fa-cog"></i> 공고 관리</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn-icon" id="theme-toggle" title="다크모드 전환">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                        <a href="index.html" class="btn btn-secondary">
+                            <i class="fas fa-home"></i> 메인으로
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="main admin-main">
+            <div class="container">
+                <div class="admin-layout">
+                    <!-- 폼 섹션 -->
+                    <section class="admin-form-section">
+                        <div class="section-header">
+                            <h2 id="form-title"><i class="fas fa-plus-circle"></i> 새 공고 등록</h2>
+                            <button class="btn btn-outline" id="reset-form" style="display: none;">
+                                <i class="fas fa-undo"></i> 새 공고 작성
+                            </button>
+                        </div>
+
+                        <form id="job-form" class="job-form">
+                            <input type="hidden" id="job-id">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="company">
+                                        <i class="fas fa-building"></i> 회사명 *
+                                    </label>
+                                    <input type="text" id="company" required placeholder="예: 크래프톤, 넥슨...">
+                                    <div class="company-suggestions" id="company-suggestions"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="job-type">
+                                        <i class="fas fa-tag"></i> 채용 유형 *
+                                    </label>
+                                    <select id="job-type" required>
+                                        <option value="">선택하세요</option>
+                                        <option value="공채">공채</option>
+                                        <option value="수시">수시</option>
+                                        <option value="인턴">인턴</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="position">
+                                    <i class="fas fa-briefcase"></i> 포지션/직무명 *
+                                </label>
+                                <input type="text" id="position" required placeholder="예: [PUBG] 언리얼엔진 클라이언트 프로그래머">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="category">
+                                        <i class="fas fa-folder"></i> 직무 분류 *
+                                    </label>
+                                    <select id="category" required>
+                                        <option value="">선택하세요</option>
+                                        <option value="기획">기획</option>
+                                        <option value="프로그래밍">프로그래밍</option>
+                                        <option value="아트">아트</option>
+                                        <option value="QA">QA</option>
+                                        <option value="사운드">사운드</option>
+                                        <option value="마케팅">마케팅</option>
+                                        <option value="경영지원">경영지원</option>
+                                        <option value="데이터">데이터</option>
+                                        <option value="기타">기타</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="deadline">
+                                        <i class="fas fa-calendar"></i> 마감일
+                                    </label>
+                                    <input type="date" id="deadline">
+                                    <small>비워두면 '채용시 마감'으로 표시됩니다</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="link">
+                                    <i class="fas fa-link"></i> 공고 링크
+                                </label>
+                                <input type="url" id="link" placeholder="https://...">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="tags">
+                                    <i class="fas fa-hashtag"></i> 태그
+                                </label>
+                                <div class="tags-input-container">
+                                    <div class="tags-list" id="tags-list"></div>
+                                    <input type="text" id="tags-input" placeholder="태그 입력 후 Enter (언리얼, 유니티, C++ 등)">
+                                </div>
+                                <div class="quick-tags-admin">
+                                    <span>빠른 추가:</span>
+                                    <button type="button" class="quick-tag-btn" data-tag="언리얼">언리얼</button>
+                                    <button type="button" class="quick-tag-btn" data-tag="유니티">유니티</button>
+                                    <button type="button" class="quick-tag-btn" data-tag="C++">C++</button>
+                                    <button type="button" class="quick-tag-btn" data-tag="신입">신입</button>
+                                    <button type="button" class="quick-tag-btn" data-tag="인턴십">인턴십</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description">
+                                    <i class="fas fa-align-left"></i> 공고 설명
+                                </label>
+                                <textarea id="description" rows="4" placeholder="공고에 대한 간단한 설명을 입력하세요"></textarea>
+                            </div>
+
+                            <div class="form-group checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="is-active" checked>
+                                    <span class="checkmark"></span>
+                                    공고 활성화 (비활성화 시 목록에 표시되지 않습니다)
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-save"></i> <span id="submit-text">등록하기</span>
+                                </button>
+                                <button type="button" class="btn btn-outline btn-lg" id="preview-btn">
+                                    <i class="fas fa-eye"></i> 미리보기
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- 공고 목록 섹션 -->
+                    <section class="admin-list-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-list"></i> 등록된 공고 (<span id="job-count">0</span>건)</h2>
+                            <div class="list-actions">
+                                <input type="text" id="admin-search" placeholder="검색..." class="admin-search-input">
+                                <button class="btn btn-outline" id="refresh-list">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="admin-job-list" id="admin-job-list">
+                            <!-- 동적으로 채워집니다 -->
+                        </div>
+
+                        <div class="loading" id="admin-loading">
+                            <div class="spinner"></div>
+                            <p>공고를 불러오는 중...</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <!-- 미리보기 모달 -->
+        <div class="modal" id="preview-modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <button class="modal-close" id="preview-close">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="modal-body" id="preview-body">
+                    <!-- 미리보기 내용 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 삭제 확인 모달 -->
+        <div class="modal" id="delete-modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content modal-sm">
+                <div class="modal-body">
+                    <div class="delete-confirm">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>공고 삭제</h3>
+                        <p>정말 이 공고를 삭제하시겠습니까?<br>삭제된 공고는 복구할 수 없습니다.</p>
+                        <div class="delete-actions">
+                            <button class="btn btn-outline" id="cancel-delete">취소</button>
+                            <button class="btn btn-danger" id="confirm-delete">삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 저장 확인 모달 (수정 중 이탈 시) -->
+        <div class="modal" id="confirm-modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content modal-sm">
+                <div class="modal-body">
+                    <div class="confirm-leave">
+                        <i class="fas fa-save"></i>
+                        <h3>변경사항 저장</h3>
+                        <p>수정 중인 공고가 있습니다.<br>변경사항을 저장하고 이동하시겠습니까?</p>
+                        <div class="confirm-actions">
+                            <button class="btn btn-outline" id="discard-confirm">저장 안 함</button>
+                            <button class="btn btn-secondary" id="cancel-confirm">취소</button>
+                            <button class="btn btn-primary" id="save-confirm">저장 후 이동</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 토스트 메시지 -->
+        <div class="toast-container" id="toast-container"></div>
+
+    </div><!-- end admin-content -->
+
+    <script>
+        // 관리자 인증 관리 (Auth 모듈 사용)
+        document.addEventListener('DOMContentLoaded', function () {
+            const passwordModal = document.getElementById('password-modal');
+            const adminContent = document.getElementById('admin-content');
+            const passwordForm = document.getElementById('password-form');
+            const passwordInput = document.getElementById('admin-password');
+            const passwordError = document.getElementById('password-error');
+
+            // 초기 인증 확인
+            if (Auth.isAuthenticated()) {
+                passwordModal.classList.remove('active');
+                adminContent.style.display = 'block';
+            }
+
+            // 비밀번호 확인 폼 제출
+            passwordForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (Auth.login(passwordInput.value)) {
+                    passwordModal.classList.remove('active');
+                    adminContent.style.display = 'block';
+                    // admin.js의 loadJobs 호출을 위해 커스텀 이벤트 발생 혹은 전역 함수 호출
+                    if (window.loadJobs) window.loadJobs();
+                } else {
+                    passwordError.style.display = 'block';
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                    passwordInput.classList.add('shake');
+                    setTimeout(() => passwordInput.classList.remove('shake'), 500);
+                }
+            });
+        });
+    </script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

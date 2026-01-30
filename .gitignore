@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+*.log
+.env
+scripts/test_*.js
+scripts/cleanup_job.js
+scripts/verify_db.js
+scripts/find_wanted_job.js

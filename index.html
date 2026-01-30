@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게임잡스 | 한국 게임업계 신입/인턴 채용 대시보드</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- PWA Setting -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="images/icon.svg">
+
+    <!-- Core & Modules -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+</head>
+
+<body>
+    <!-- 헤더 -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <i class="fas fa-gamepad"></i>
+                    <span>게임잡스</span>
+                </a>
+                <nav class="nav">
+                    <a href="#" class="nav-link" data-view="jobs">
+                        <i class="fas fa-briefcase"></i> 채용공고
+                    </a>
+                    <a href="#" class="nav-link" data-view="calendar">
+                        <i class="fas fa-calendar-alt"></i> 캘린더
+                    </a>
+                    <a href="#" class="nav-link" data-view="schedule">
+                        <i class="fas fa-clipboard-list"></i> 공채일정
+                    </a>
+
+                    <a href="#" class="nav-link active" data-view="links">
+                        <i class="fas fa-link"></i> 채용사이트
+                    </a>
+                </nav>
+                <div class="header-actions">
+                    <button class="btn-icon" id="theme-toggle" title="다크모드 전환">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="btn btn-secondary" id="admin-btn">
+                        <i class="fas fa-plus"></i> 공고 등록
+                    </button>
+                </div>
+                <button class="mobile-menu-btn" id="mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 모바일 메뉴 -->
+    <div class="mobile-menu" id="mobile-menu">
+        <nav class="mobile-nav">
+            <a href="#" class="mobile-nav-link" data-view="jobs">
+                <i class="fas fa-briefcase"></i> 채용공고
+            </a>
+            <a href="#" class="mobile-nav-link" data-view="calendar">
+                <i class="fas fa-calendar-alt"></i> 캘린더
+            </a>
+            <a href="#" class="mobile-nav-link" data-view="schedule">
+                <i class="fas fa-clipboard-list"></i> 공채일정
+            </a>
+
+            <a href="#" class="mobile-nav-link active" data-view="links">
+                <i class="fas fa-link"></i> 채용사이트
+            </a>
+            <button class="mobile-nav-link" id="admin-btn-mobile">
+                <i class="fas fa-plus"></i> 공고 등록
+            </button>
+        </nav>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="main">
+        <!-- 채용공고 뷰 -->
+        <section class="view view-jobs" id="view-jobs">
+            <div class="container">
+                <!-- 히어로 섹션 -->
+                <div class="hero">
+                    <h1>게임업계 신입/인턴 채용 정보</h1>
+                    <p>크래프톤, 넥슨, 엔씨소프트 등 주요 게임사와 언리얼엔진 사용 업체의 채용 공고를 한눈에!</p>
+                </div>
+
+                <!-- 검색 및 필터 -->
+                <div class="search-filter-section">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="키워드 검색 (언리얼, 유니티, 기획, 프로그래머...)">
+                        <button class="btn-clear" id="search-clear" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>회사</label>
+                            <select id="filter-company">
+                                <option value="">전체</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>직무</label>
+                            <select id="filter-category">
+                                <option value="">전체</option>
+                                <option value="기획">기획</option>
+                                <option value="프로그래밍">프로그래밍</option>
+                                <option value="아트">아트</option>
+                                <option value="QA">QA</option>
+                                <option value="사운드">사운드</option>
+                                <option value="마케팅">마케팅</option>
+                                <option value="경영지원">경영지원</option>
+                                <option value="데이터">데이터</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>채용유형</label>
+                            <select id="filter-type">
+                                <option value="">전체</option>
+                                <option value="공채">공채</option>
+                                <option value="수시">수시</option>
+                                <option value="인턴">인턴</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>엔진</label>
+                            <select id="filter-engine">
+                                <option value="">전체</option>
+                                <option value="언리얼">언리얼</option>
+                                <option value="유니티">유니티</option>
+                                <option value="기타/자체엔진">기타/자체엔진</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-outline" id="filter-reset">
+                            <i class="fas fa-redo"></i> 초기화
+                        </button>
+                    </div>
+                    <div class="quick-tags">
+                        <span class="tag-label">빠른 검색:</span>
+                        <button class="quick-tag" data-tag="언리얼">언리얼</button>
+                        <button class="quick-tag" data-tag="유니티">유니티</button>
+                        <button class="quick-tag" data-tag="기획">기획</button>
+                        <button class="quick-tag" data-tag="서버">서버</button>
+                        <button class="quick-tag" data-tag="클라이언트">클라이언트</button>
+                        <button class="quick-tag" data-tag="아트">아트</button>
+                    </div>
+                </div>
+
+                <!-- 통계 -->
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <i class="fas fa-file-alt"></i>
+                        <span><strong id="stat-total">0</strong> 개의 공고</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-building"></i>
+                        <span><strong id="stat-companies">0</strong> 개 회사</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>마감 임박 <strong id="stat-urgent">0</strong> 건</span>
+                    </div>
+                </div>
+
+                <!-- 채용공고 리스트 -->
+                <div class="jobs-container">
+                    <div class="jobs-header">
+                        <h2>채용공고 목록</h2>
+                        <div class="sort-options">
+                            <label>정렬:</label>
+                            <select id="sort-select">
+                                <option value="deadline">마감일순</option>
+                                <option value="latest">최신순</option>
+                                <option value="company">회사명순</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="jobs-grid" id="jobs-grid">
+                        <!-- 채용공고 카드들이 여기에 동적으로 생성됩니다 -->
+                    </div>
+                    <div class="no-results" id="no-results" style="display: none;">
+                        <i class="fas fa-search"></i>
+                        <h3>검색 결과가 없습니다</h3>
+                        <p>다른 키워드나 필터를 시도해보세요.</p>
+                    </div>
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>채용공고를 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 캘린더 뷰 -->
+        <section class="view view-calendar" id="view-calendar">
+            <div class="container">
+                <div class="calendar-header">
+                    <h1><i class="fas fa-calendar-alt"></i> 마감일 캘린더</h1>
+                    <p>채용 마감일을 캘린더에서 한눈에 확인하세요</p>
+                </div>
+                <div class="calendar-navigation">
+                    <button class="btn btn-icon" id="prev-month">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <h2 id="current-month">2025년 1월</h2>
+                    <button class="btn btn-icon" id="next-month">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="btn btn-outline" id="today-btn">오늘</button>
+                </div>
+                <div class="calendar-container">
+                    <div class="calendar-weekdays">
+                        <div class="weekday sun">일</div>
+                        <div class="weekday">월</div>
+                        <div class="weekday">화</div>
+                        <div class="weekday">수</div>
+                        <div class="weekday">목</div>
+                        <div class="weekday">금</div>
+                        <div class="weekday sat">토</div>
+                    </div>
+                    <div class="calendar-days" id="calendar-days">
+                        <!-- 캘린더 날짜가 여기에 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+                <div class="calendar-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot urgent"></span> 마감 임박 (3일 이내)
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot normal"></span> 채용 마감일
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 공채일정 뷰 -->
+        <section class="view view-schedule" id="view-schedule">
+            <div class="container">
+                <div class="schedule-header">
+                    <h1><i class="fas fa-clipboard-list"></i> 2026 채용 예상 일정</h1>
+                    <p>과거 데이터를 기반으로 예측한 주요 게임사의 2026년 공채 및 인턴십 일정입니다.</p>
+                </div>
+
+                <!-- 2026 Disclaimer -->
+                <div class="schedule-note top-note"
+                    style="margin-bottom: 24px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fas fa-info-circle" style="color: var(--primary); margin-top: 2px;"></i>
+                    <p style="font-size: 14px; line-height: 1.5; color: var(--text-secondary); margin: 0;">
+                        <strong>안내:</strong> 본 일정은 2025년 및 이전의 채용 패턴을 분석하여 작성된 <strong>예상 일정</strong>입니다.<br>
+                        정확한 2026년 모집 시기는 각 게임사의 공식 발표에 따라 변경될 수 있으므로, 반드시 공식 채용 사이트를 수시로 확인하시기 바랍니다.
+                    </p>
+                </div>
+
+                <div class="schedule-timeline">
+                    <!-- 1월 -->
+                    <div class="schedule-month">
+                        <div class="month-header">
+                            <span class="month-name">1월</span>
+                        </div>
+                        <div class="month-events empty">
+                            <p class="no-events">예정된 공채 없음</p>
+                        </div>
+                    </div>
+                    <!-- 2월 -->
+                    <div class="schedule-month">
+                        <div class="month-header">
+                            <span class="month-name">2월</span>
+                        </div>
+                        <div class="month-events empty">
+                            <p class="no-events">예정된 공채 없음</p>
+                        </div>
+                    </div>
+                    <!-- 3월 -->
+                    <div class="schedule-month">
+                        <div class="month-header">
+                            <span class="month-name">3월</span>
+                        </div>
+                        <div class="month-events empty">
+                            <p class="no-events">예정된 공채 없음</p>
+                        </div>
+                    </div>
+                    <!-- 4월 -->
+                    <div class="schedule-month">
+                        <div class="month-header highlight">
+                            <span class="month-name">4월</span>
+                        </div>
+                        <div class="month-events">
+                            <div class="event-card ncsoft">
+                                <div class="event-company">엔씨소프트</div>
+                                <div class="event-type">Summer Intern</div>
+                                <div class="event-desc">개발/비개발 전 직군 하계 인턴</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 5월 -->
+                    <div class="schedule-month">
+                        <div class="month-header highlight">
+                            <span class="month-name">5월</span>
+                        </div>
+                        <div class="month-events">
+                            <div class="event-card smilegate">
+                                <div class="event-company">스마일게이트</div>
+                                <div class="event-type">하계 인턴십</div>
+                                <div class="event-desc">직무 체험형 인턴십 (개발/기획 등)</div>
+                            </div>
+                            <div class="event-card com2us">
+                                <div class="event-company">컴투스</div>
+                                <div class="event-type">Summer Intern</div>
+                                <div class="event-desc">서머너즈워, 신규 프로젝트 등</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 6월 -->
+                    <div class="schedule-month">
+                        <div class="month-header">
+                            <span class="month-name">6월</span>
+                        </div>
+                        <div class="month-events empty">
+                            <p class="no-events">예정된 공채 없음</p>
+                        </div>
+                    </div>
+                    <!-- 7월 -->
+                    <div class="schedule-month">
+                        <div class="month-header">
+                            <span class="month-name">7월</span>
+                        </div>
+                        <div class="month-events empty">
+                            <p class="no-events">예정된 공채 없음</p>
+                        </div>
+                    </div>
+                    <!-- 8월 -->
+                    <div class="schedule-month">
+                        <div class="month-header highlight">
+                            <span class="month-name">8월</span>
+                        </div>
+                        <div class="month-events">
+                            <div class="event-card nhn">
+                                <div class="event-company">NHN</div>
+                                <div class="event-type">게임부문 공채</div>
+                                <div class="event-desc">한게임, 신규 게임 개발</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 9월 -->
+                    <div class="schedule-month">
+                        <div class="month-header highlight">
+                            <span class="month-name">9월</span>
+                        </div>
+                        <div class="month-events">
+                            <div class="event-card nexon">
+                                <div class="event-company">넥슨</div>
+                                <div class="event-type">넥토리얼</div>
+                                <div class="event-desc">대규모 채용형 인턴십 (전 직군)</div>
+                            </div>
+                            <div class="event-card krafton">
+                                <div class="event-company">크래프톤</div>
+                                <div class="event-type">신입 공채</div>
+                                <div class="event-desc">PUBG, 신규 프로젝트 개발 직군</div>
+                            </div>
+                            <div class="event-card netmarble">
+                                <div class="event-company">넷마블</div>
+                                <div class="event-type">신입 공채</div>
+                                <div class="event-desc">주요 개발 자회사 통합 공채</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 10월 -->
+                    <div class="schedule-month">
+                        <div class="month-header highlight">
+                            <span class="month-name">10월</span>
+                        </div>
+                        <div class="month-events">
+                            <div class="event-card ncsoft">
+                                <div class="event-company">엔씨소프트</div>
+                                <div class="event-type">신입 공채</div>
+                                <div class="event-desc">하반기 신입사원 공개채용</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 11월 -->
+                    <div class="schedule-month">
+                        <div class="month-header highlight">
+                            <span class="month-name">11월</span>
+                        </div>
+                        <div class="month-events">
+                            <div class="event-card smilegate">
+                                <div class="event-company">스마일게이트</div>
+                                <div class="event-type">동계 인턴십</div>
+                                <div class="event-desc">채용 연계형 인턴십 가능성 있음</div>
+                            </div>
+                            <div class="event-card pearl">
+                                <div class="event-company">펄어비스</div>
+                                <div class="event-type">동계 인턴십</div>
+                                <div class="event-desc">신규 프로젝트 개발 직군 인턴</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 12월 -->
+                    <div class="schedule-month">
+                        <div class="month-header">
+                            <span class="month-name">12월</span>
+                        </div>
+                        <div class="month-events empty">
+                            <p class="no-events">예정된 공채 없음</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 채용사이트 링크 뷰 -->
+        <section class="view view-links active" id="view-links">
+            <div class="container">
+                <div class="links-header">
+                    <h1><i class="fas fa-gamepad"></i> 게임업계 채용 검색</h1>
+                    <p>원티드, 사람인 등 <strong>검증된 채용 사이트</strong>에서 신입/인턴 채용 정보를 검색하세요!</p>
+                </div>
+
+                <!-- 안내 배너 -->
+                <div class="info-banner">
+                    <i class="fas fa-info-circle"></i>
+                    <p><strong>모든 링크는 검증된 채용 사이트로 연결됩니다!</strong> 클릭하면 원티드, 사람인 등에서 실제 채용 공고를 확인할 수 있습니다.</p>
+                </div>
+
+                <div class="links-section">
+                    <h2><i class="fas fa-fire"></i> 신입/인턴 채용 바로가기</h2>
+                    <div class="links-grid" id="job-site-links">
+                        <!-- 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
+                <div class="links-section">
+                    <h2><i class="fas fa-building"></i> 주요 게임사 채용 검색</h2>
+                    <p class="section-desc">회사명으로 게임잡 검색 결과를 확인하세요</p>
+                    <div class="links-grid" id="company-links">
+                        <!-- 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
+                <div class="links-section">
+                    <h2><i class="fas fa-folder"></i> 직무별 채용 검색</h2>
+                    <p class="section-desc">원하는 직무로 검색하세요</p>
+                    <div class="links-grid" id="job-category-links">
+                        <!-- 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
+                <div class="links-section">
+                    <h2><i class="fas fa-cube"></i> 게임엔진별 채용 검색</h2>
+                    <p class="section-desc">언리얼/유니티 개발자 채용</p>
+                    <div class="links-grid" id="engine-links">
+                        <!-- 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
+                <div class="links-section">
+                    <h2><i class="fas fa-code"></i> 개발 포지션별 검색</h2>
+                    <p class="section-desc">클라이언트/서버/신입/인턴</p>
+                    <div class="links-grid" id="developer-links">
+                        <!-- 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+    </main>
+
+    <!-- 모달: 공고 상세 -->
+    <div class="modal" id="job-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-body" id="modal-body">
+                <!-- 동적으로 채워집니다 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <div class="footer-logo">
+                        <i class="fas fa-gamepad"></i>
+                        <span>게임잡스</span>
+                    </div>
+                    <p>한국 게임업계 신입/인턴 채용 정보를 한눈에</p>
+                </div>
+                <div class="footer-links">
+                    <h4>바로가기</h4>
+                    <a href="#" data-view="jobs">채용공고</a>
+                    <a href="#" data-view="calendar">캘린더</a>
+                    <a href="#" data-view="schedule">공채일정</a>
+
+                    <a href="#" id="admin-btn-footer">공고 등록</a>
+                </div>
+                <div class="footer-notice">
+                    <h4>안내</h4>
+                    <p>본 사이트의 채용 정보는 참고용입니다.<br>정확한 정보는 각 회사 공식 채용 페이지를 확인해주세요.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 게임잡스. 여러분의 꿈을 응원합니다! 🎮</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 관리자 비밀번호 모달 -->
+    <div class="modal" id="admin-password-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content" style="max-width: 400px;">
+            <button class="modal-close" id="admin-password-close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-body">
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-lock" style="font-size: 48px; color: var(--primary); margin-bottom: 16px;"></i>
+                    <h3 style="font-size: 20px; margin-bottom: 12px;">관리자 인증</h3>
+                    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">공고 관리 페이지에
+                        접근하려면<br>비밀번호를 입력하세요.</p>
+                    <form id="admin-password-form">
+                        <div style="margin-bottom: 20px;">
+                            <input type="password" id="main-admin-password" placeholder="비밀번호 입력" required
+                                style="width: 100%; padding: 12px 16px; font-size: 15px; border: 2px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); text-align: center;">
+                            <p id="main-password-error"
+                                style="display: none; color: #ef4444; font-size: 13px; margin-top: 8px;">
+                                <i class="fas fa-exclamation-circle"></i> 비밀번호가 올바르지 않습니다.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 12px; justify-content: center;">
+                            <button type="button" class="btn btn-outline" id="admin-password-cancel">취소</button>
+                            <button type="submit" class="btn btn-primary">확인</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/bookmarks.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // 관리자 인증 로직 (Auth 모듈 사용)
+        (function () {
+            const modal = document.getElementById('admin-password-modal');
+            const form = document.getElementById('admin-password-form');
+            const passwordInput = document.getElementById('main-admin-password');
+            const errorMsg = document.getElementById('main-password-error');
+
+            const adminBtns = [
+                document.getElementById('admin-btn'),
+                document.getElementById('admin-btn-mobile'),
+                document.getElementById('admin-btn-footer')
+            ];
+
+            adminBtns.forEach(btn => {
+                btn?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (Auth.isAuthenticated()) {
+                        window.location.href = 'admin.html';
+                    } else {
+                        modal.classList.add('active');
+                        passwordInput.value = '';
+                        errorMsg.style.display = 'none';
+                        setTimeout(() => passwordInput.focus(), 100);
+                    }
+                });
+            });
+
+            form?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (Auth.login(passwordInput.value)) {
+                    window.location.href = 'admin.html';
+                } else {
+                    errorMsg.style.display = 'block';
+                    passwordInput.classList.add('shake');
+                    setTimeout(() => passwordInput.classList.remove('shake'), 500);
+                }
+            });
+
+            // 모달 닫기 로직
+            const closeBtns = [
+                document.getElementById('admin-password-close'),
+                document.getElementById('admin-password-cancel'),
+                modal?.querySelector('.modal-overlay')
+            ];
+            closeBtns.forEach(btn => btn?.addEventListener('click', () => modal.classList.remove('active')));
+        })();
+    </script>
+    <style>
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-10px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(10px);
+            }
+        }
+    </style>
+</body>
+
+</html>
