@@ -759,7 +759,21 @@ function sortJobs() {
 
 function updateStats() {
     const total = state.filteredJobs.length;
-    const companies = new Set(state.filteredJobs.map(job => job.company)).size;
+
+    // 회사명 정규화 후 카운트 ( (주), 주식회사, 영어명칭 등 중복 방지 )
+    const companiesSet = new Set(state.filteredJobs.map(job => {
+        return (job.company || '')
+            .replace(/\(주\)/g, '')
+            .replace(/주식회사/g, '')
+            .replace(/㈜/g, '')
+            .replace(/\(유\)/g, '')
+            .replace(/\(사\)/g, '')
+            .replace(/\(.+?\)/g, '') // 괄호 안의 영문명 등 제거 (예: (NEXON) -> 제거)
+            .replace(/\[.+?\]/g, '') // 대괄호 내용 제거
+            .replace(/\s+/g, '')
+            .trim();
+    }));
+    const companies = companiesSet.size;
     const now = new Date();
     const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
     const urgent = state.filteredJobs.filter(job => {
