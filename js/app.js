@@ -227,7 +227,7 @@ const COMPANY_LINKS = [
         name: '그라비티',
         desc: '라그나로크',
         class: 'gravity',
-        url: 'https://www.gravity.co.kr/kr/recruit/people.asp'
+        url: 'https://www.gravity.co.kr/kr/recruit/jobopening/list'
     }
 ];
 
@@ -285,7 +285,6 @@ const JOB_CATEGORY_LINKS = [
     }
 ];
 
-// 언리얼/유니티 엔진 관련 채용 (원티드)
 // 언리얼/유니티 엔진 관련 채용 (원티드)
 const ENGINE_LINKS = [
     {
