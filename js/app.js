@@ -28,6 +28,27 @@ const state = {
 };
 
 // ===================================
+// Constants & Mappings
+// ===================================
+const FILTER_MAPPINGS = {
+    category: {
+        '기획': ['기획', 'planning', 'gd', '시스템', '레벨', '밸런스', '퀘스트', '설정', '시나리오', '전투', 'combat'],
+        '프로그래밍': ['프로그래밍', '프로그래머', '개발', 'develop', 'engineer', '엔지니어', '클라이언트', 'client', '서버', 'server', '프론트', '백앤드', '소프트웨어', 'sw'],
+        '아트': ['아트', 'art', '그래픽', 'graphic', '디자인', 'design', '원화', 'concept', '모델러', 'modeler', '애니', 'anim', '이펙트', 'effect', 'ui', 'ux', 'ta', 'technical'],
+        'QA': ['qa', 'q.a', '테스트', 'test', '품질', '검증'],
+        '사운드': ['사운드', 'sound', '오디오', 'audio', 'bgm', 'sfx', '음향'],
+        '마케팅': ['마케팅', 'market', '광고', '홍보', 'pr', '사업', 'business', 'pm', '서비스'],
+        '경영지원': ['경영', '인사', 'hr', '총무', '재무', '회계', '법무', 'ga', '지원'],
+        '데이터': ['데이터', 'data', '분석', 'analyst', 'ai', '머신러닝', '딥러닝', 'r&d']
+    },
+    type: {
+        '공채': ['공채', '공개채용'],
+        '인턴': ['인턴', 'intern', '체험형'],
+        '수시': ['수시', '수시채용', '상시채용', '상시']
+    }
+};
+
+// ===================================
 // DOM Elements
 // ===================================
 const elements = {
@@ -610,25 +631,6 @@ function updateCompanyFilter() {
 function applyFiltersAndRender() {
     // Apply filters
     state.filteredJobs = state.jobs.filter(job => {
-        // Advanced Filter Mappings
-        const FILTER_MAPPINGS = {
-            category: {
-                '기획': ['기획', 'planning', 'gd', '시스템', '레벨', '밸런스', '퀘스트', '설정', '시나리오', '전투', 'combat'],
-                '프로그래밍': ['프로그래밍', '프로그래머', '개발', 'develop', 'engineer', '엔지니어', '클라이언트', 'client', '서버', 'server', '프론트', '백앤드', '소프트웨어', 'sw'],
-                '아트': ['아트', 'art', '그래픽', 'graphic', '디자인', 'design', '원화', 'concept', '모델러', 'modeler', '애니', 'anim', '이펙트', 'effect', 'ui', 'ux', 'ta', 'technical'],
-                'QA': ['qa', 'q.a', '테스트', 'test', '품질', '검증'],
-                '사운드': ['사운드', 'sound', '오디오', 'audio', 'bgm', 'sfx', '음향'],
-                '마케팅': ['마케팅', 'market', '광고', '홍보', 'pr', '사업', 'business', 'pm', '서비스'],
-                '경영지원': ['경영', '인사', 'hr', '총무', '재무', '회계', '법무', 'ga', '지원'],
-                '데이터': ['데이터', 'data', '분석', 'analyst', 'ai', '머신러닝', '딥러닝', 'r&d']
-            },
-            type: {
-                '공채': ['공채', '공개채용'],
-                '인턴': ['인턴', 'intern', '체험형'],
-                '수시': ['수시', '수시채용', '상시채용', '상시']
-            }
-        };
-
         const jobText = (job.position + ' ' + (job.category || '') + ' ' + (job.job_type || '') + ' ' + (job.tags || []).join(' ')).toLowerCase();
 
         // Company filter
@@ -772,110 +774,114 @@ function updateStats() {
 }
 
 // ===================================
+// Job Card Utilities
+// ===================================
+function isUrgentDate(deadlineStr) {
+    if (!deadlineStr) return false;
+    const deadline = new Date(deadlineStr);
+    const now = new Date();
+    const diff = deadline - now;
+    return diff > 0 && diff <= 3 * 24 * 60 * 60 * 1000;
+}
+
+function isPastDate(deadlineStr) {
+    if (!deadlineStr) return false;
+    return new Date(deadlineStr) < new Date();
+}
+
+function formatDateLabel(deadlineStr) {
+    if (!deadlineStr) return '채용시 마감';
+    const deadline = new Date(deadlineStr);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (deadline < now) return '마감됨';
+
+    const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return '오늘 마감';
+    if (diffDays === 1) return '내일 마감';
+    if (diffDays <= 7) return `D-${diffDays}`;
+
+    return formatDate(deadline);
+}
+
+function getCompanyClass(companyName) {
+    const name = (companyName || '').toLowerCase();
+    if (name.includes('크래프톤')) return 'krafton';
+    if (name.includes('넥슨')) return 'nexon';
+    if (name.includes('엔씨')) return 'ncsoft';
+    if (name.includes('넷마블')) return 'netmarble';
+    if (name.includes('컴투스')) return 'com2us';
+    if (name.includes('nhn')) return 'nhn';
+    if (name.includes('펄어비스')) return 'pearl';
+    if (name.includes('스마일게이트')) return 'smilegate';
+    return 'default';
+}
+
+// ===================================
 // Job Cards Rendering
 // ===================================
 function renderJobs() {
     if (!elements.jobsGrid) return;
 
-    // 공고가 없으면 안내 메시지 표시
     if (state.filteredJobs.length === 0) {
         elements.jobsGrid.innerHTML = '';
+        elements.noResults.style.display = 'block';
 
-        // 커스텀 no-results 메시지
-        if (elements.noResults) {
+        if (state.jobs.length === 0) {
             elements.noResults.innerHTML = `
                 <i class="fas fa-info-circle"></i>
                 <h3>등록된 채용 공고가 없습니다</h3>
-                <p>아래 버튼을 클릭하여 채용 사이트에서 최신 정보를 확인하세요!</p>
-                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
-                    <a href="https://www.wanted.co.kr/wdlist/518?country=kr&job_sort=job.latest_order&years=0&years=1&years=2" target="_blank" class="btn btn-primary">
-                        <i class="fas fa-external-link-alt"></i> 원티드 게임 신입 보기
-                    </a>
-                    <a href="https://www.saramin.co.kr/zf_user/search?searchType=search&searchword=%EA%B2%8C%EC%9E%84&exp_cd=1" target="_blank" class="btn btn-secondary">
-                        <i class="fas fa-external-link-alt"></i> 사람인 게임 신입 보기
-                    </a>
-                </div>
+                <p>채용 사이트에서 직접 최신 공고를 확인해보세요.</p>
             `;
-            elements.noResults.style.display = 'block';
+        } else {
+            elements.noResults.innerHTML = `
+                <i class="fas fa-search"></i>
+                <h3>필터 결과가 없습니다</h3>
+                <p>다른 키워드나 필터를 선택해보세요.</p>
+                <button class="btn btn-outline" style="margin-top:15px" onclick="resetFilters()">필터 초기화</button>
+            `;
         }
         return;
     }
 
-    if (elements.noResults) {
-        elements.noResults.style.display = 'none';
-    }
+    elements.noResults.style.display = 'none';
 
-    elements.jobsGrid.innerHTML = state.filteredJobs.map(job => createJobCard(job)).join('');
+    // HTML 문자열 결합 (성능 최적화)
+    const cardsHtml = state.filteredJobs.map(job => createJobCard(job)).join('');
+    elements.jobsGrid.innerHTML = cardsHtml;
 
-    // GSAP Stagger Animation
+    // GSAP 애니메이션
     if (window.gsap) {
         gsap.fromTo('.job-card',
-            { opacity: 0, y: 20, scale: 0.95 },
-            { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
+            { opacity: 0, y: 15 },
+            { opacity: 1, y: 0, duration: 0.3, stagger: 0.03, ease: 'power2.out' }
         );
     }
-
-    // Add click handlers
-    elements.jobsGrid.querySelectorAll('.job-card').forEach((card, index) => {
-        card.addEventListener('click', () => {
-            const job = state.filteredJobs[index];
-            if (job) openJobModal(job);
-        });
-
-        // Prevent link click from opening modal
-        card.querySelector('.job-link')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-    });
 }
 
-
-
 function createJobCard(job) {
-    const deadline = job.deadline ? new Date(job.deadline) : null;
-    const now = new Date();
-    const isUrgent = deadline && (deadline - now) <= 3 * 24 * 60 * 60 * 1000 && deadline >= now;
-    const isPast = deadline && deadline < now;
-
-
-
-    const deadlineText = deadline
-        ? formatDate(deadline) + (isUrgent ? ' (마감 임박!)' : '') + (isPast ? ' (마감)' : '')
-        : '채용시 마감';
-
-    const tags = (job.tags || []).slice(0, 3);
+    const isUrgent = isUrgentDate(job.deadline);
+    const isPast = isPastDate(job.deadline);
+    const tags = job.tags || [];
 
     return `
-        <article class="job-card" data-id="${job.id}">
+        <article class="job-card ${isUrgent ? 'urgent' : ''} ${isPast ? 'past' : ''}" 
+                 onclick="openJobModal(window.state.jobs.find(j => String(j.id) === '${job.id}'))">
             <div class="job-card-header">
-                <span class="job-company">
-                    <i class="fas fa-building"></i>
-                    ${escapeHtml(job.company || '회사명 미정')}
-                </span>
-                <div class="job-card-actions">
-                    <span class="job-type-badge ${job.job_type || ''}">${escapeHtml(job.job_type || '수시')}</span>
-                </div>
+                <div class="company-badge-mini ${getCompanyClass(job.company)}"></div>
+                <span class="company-name">${escapeHtml(job.company)}</span>
+                <span class="job-type-badge">${escapeHtml(job.job_type || '수시')}</span>
             </div>
-            <h3 class="job-title">${escapeHtml(job.position || '포지션 미정')}</h3>
-            <span class="job-category">
-                <i class="fas fa-folder"></i>
-                ${escapeHtml(job.category || '기타')}
-            </span>
-            ${tags.length > 0 ? `
-                <div class="job-tags">
-                    ${tags.map(tag => `<span class="job-tag">${escapeHtml(tag)}</span>`).join('')}
-                </div>
-            ` : ''}
-            <div class="job-card-footer">
-                <span class="job-deadline ${isUrgent ? 'urgent' : ''} ${isPast ? 'past' : ''}">
-                    <i class="fas fa-clock"></i>
-                    ${deadlineText}
+            <h3 class="job-title">${escapeHtml(job.position)}</h3>
+            <div class="job-meta">
+                <span class="category-tag"><i class="fas fa-folder"></i> ${escapeHtml(job.category || '기타')}</span>
+                <span class="deadline-tag ${isUrgent ? 'urgent' : ''}">
+                    <i class="fas fa-clock"></i> ${formatDateLabel(job.deadline)}
                 </span>
-                ${job.link ? `
-                    <a href="${escapeHtml(job.link)}" target="_blank" class="job-link" onclick="event.stopPropagation()">
-                        상세보기 <i class="fas fa-arrow-right"></i>
-                    </a>
-                ` : ''}
+            </div>
+            <div class="job-tags">
+                ${tags.slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
             </div>
         </article>
     `;

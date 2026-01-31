@@ -19,7 +19,7 @@ if (!API_URL || !SUPABASE_KEY) {
 async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
     try {
         const config = {
-            timeout: 10000, // 10초 타임아웃
+            timeout: 10000,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 ...options.headers
@@ -28,11 +28,14 @@ async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
         };
         return await axios.get(url, config);
     } catch (e) {
-        if (retries > 0 && (!e.response || e.response.status >= 500)) {
-            console.warn(`[Retry] ${url} 실패. 재시도 중... (남은 횟수: ${retries})`);
+        const status = e.response ? e.response.status : null;
+        // 500번대 에러 또는 네트워크 관련 에러(timeout, ENOTFOUND 등)인 경우 재시도
+        if (retries > 0 && (!status || status >= 500)) {
+            console.warn(`[Retry] ${url} 실패 (${status || e.code}). 재시도 중... (${retries}회 남음)`);
             await new Promise(resolve => setTimeout(resolve, backoff));
             return fetchWithRetry(url, options, retries - 1, backoff * 2);
         }
+        throw e;
     }
 }
 
@@ -443,27 +446,37 @@ const Crawler = {
         }
 
         if (uniqueColl.length === 0) {
-            console.log('[Sync] 수집된 공고가 없습니다.');
+            console.log('[Sync] 수집된 새로운 공고가 없습니다.');
             return;
         }
 
-        console.log(`[Sync] ${uniqueColl.length}개의 공고를 순차적으로 동기화(등록/갱신) 중...`);
+        console.log(`[Sync] ${uniqueColl.length}개의 공고를 벌크 업서트(${existingLinks.size > 0 ? '갱신 포함' : '신규 전용'}) 중...`);
 
-        const BATCH_SIZE = 1; // 1개씩 처리하여 중복 행 충돌 방지 및 개별 업데이트 실시간 반영
+        // 벌크 처리를 통해 네트워크 라운드트립 감소 (성능 개선)
+        const BATCH_SIZE = 50;
         let successCount = 0;
 
         for (let i = 0; i < uniqueColl.length; i += BATCH_SIZE) {
             const batch = uniqueColl.slice(i, i + BATCH_SIZE);
             try {
+                // Supabase upsert: link를 기준으로 중복 시 업데이트
                 await api.post('', batch);
                 successCount += batch.length;
-                if (successCount % 10 === 0) console.log(`[Sync] Progress: ${successCount}/${uniqueColl.length} 완료`);
+                console.log(`[Sync] Progress: ${successCount}/${uniqueColl.length} 동기화 완료`);
             } catch (e) {
-                console.error(`[Sync] 항목 ${i} 에러:`, e.response ? JSON.stringify(e.response.data) : e.message);
+                console.error(`[Sync] Batch ${i / BATCH_SIZE + 1} 에러:`, e.response ? JSON.stringify(e.response.data) : e.message);
+                // 배치 실패 시 1개씩 재시도하는 Fallback (안정성 강화)
+                if (batch.length > 1) {
+                    console.warn('[Sync] 배치가 실패하여 개별 동기화로 전환합니다...');
+                    for (const item of batch) {
+                        try { await api.post('', [item]); successCount++; }
+                        catch (innerErr) { console.error(`[Sync] 개별 항목 에러: ${item.company} | ${item.position}`); }
+                    }
+                }
             }
         }
 
-        console.log(`[Sync] 최종 성공: ${successCount}건 등록 완료.`);
+        console.log(`[Sync] 최종 성공: ${successCount}건 처리 완료.`);
 
         // 4. 만료된 공고 자동 처리 (마감일 지난 것들)
         await this.cleanup();
