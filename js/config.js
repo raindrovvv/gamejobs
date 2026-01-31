@@ -32,6 +32,13 @@ const CONFIG = {
     UI: {
         ANIMATION_SPEED: 300,
         TOAST_DURATION: 3000
+    },
+
+    // 분석 도구 (GA4)
+    ANALYTICS: {
+        // 구글 애널리틱스 측정 ID (예: G-ABC1234567)
+        // 측정 ID가 없으면 로드되지 않습니다.
+        GA4_ID: 'G-VWR293KCYJ'
     }
 };
 
