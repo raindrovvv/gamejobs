@@ -1168,13 +1168,13 @@ function showDayJobsModal(date, jobs) {
         <div class="day-jobs-list">
             ${jobs.map(job => `
                 <div class="day-job-item-wrapper" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                    <div class="day-job-item" onclick="closeModal(); setTimeout(() => openJobModal(window.state.jobs.find(j => String(j.id) === '${job.id}')), 300)" style="flex: 1; cursor: pointer;">
+                    <div class="day-job-item" style="flex: 1;">
                         <div class="day-job-company">${escapeHtml(job.company)}</div>
                         <div class="day-job-position">${escapeHtml(job.position)}</div>
                         <div class="day-job-category">${escapeHtml(job.category)}</div>
                     </div>
                     ${job.link ? `
-                    <a href="${escapeHtml(job.link)}" target="_blank" class="btn btn-sm btn-outline" style="white-space: nowrap; padding: 8px 12px; height: auto;" onclick="event.stopPropagation()">
+                    <a href="${escapeHtml(job.link)}" target="_blank" class="btn btn-sm btn-outline" style="white-space: nowrap; padding: 8px 12px; height: auto;" title="공고 보기">
                         <i class="fas fa-external-link-alt"></i>
                     </a>
                     ` : ''}
