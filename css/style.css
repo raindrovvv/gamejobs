@@ -317,8 +317,11 @@ img {
     color: var(--primary);
 }
 
-.logo i {
-    font-size: 26px;
+.logo i,
+.logo img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
 }
 
 .nav {
