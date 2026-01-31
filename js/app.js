@@ -848,7 +848,7 @@ function renderJobs() {
     elements.noResults.style.display = 'none';
 
     // HTML 문자열 결합 (성능 최적화)
-    const cardsHtml = state.filteredJobs.map(job => createJobCard(job)).join('');
+    const cardsHtml = state.filteredJobs.map((job, index) => createJobCard(job, index)).join('');
     elements.jobsGrid.innerHTML = cardsHtml;
 
     // GSAP 애니메이션
@@ -860,14 +860,28 @@ function renderJobs() {
     }
 }
 
-function createJobCard(job) {
+// 이벤트 위임 처리 (카드 클릭 핸들러)
+elements.jobsGrid?.addEventListener('click', (e) => {
+    const card = e.target.closest('.job-card');
+    const jobLink = e.target.closest('.job-link');
+
+    // 링크 클릭이 아니고 카드 자체 클릭인 경우에만 상세 모달 오픈
+    if (card && !jobLink) {
+        const index = parseInt(card.dataset.index);
+        const job = state.filteredJobs[index];
+        if (job) {
+            openJobModal(job);
+        }
+    }
+});
+
+function createJobCard(job, index) {
     const isUrgent = isUrgentDate(job.deadline);
     const isPast = isPastDate(job.deadline);
     const tags = job.tags || [];
 
     return `
-        <article class="job-card ${isUrgent ? 'urgent' : ''} ${isPast ? 'past' : ''}" 
-                 onclick="openJobModal(window.state.jobs.find(j => String(j.id) === '${job.id}'))">
+        <article class="job-card ${isUrgent ? 'urgent' : ''} ${isPast ? 'past' : ''}" data-index="${index}">
             <div class="job-card-header">
                 <div class="company-badge-mini ${getCompanyClass(job.company)}"></div>
                 <span class="company-name">${escapeHtml(job.company)}</span>
