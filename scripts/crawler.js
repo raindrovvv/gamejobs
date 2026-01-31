@@ -301,6 +301,49 @@ const Crawler = {
         }
     },
 
+    // 4. 게임잡 - 직무별 채용공고 (사용자 요청 추가)
+    async crawlGamejobDuty() {
+        console.log('Crawling Gamejob Duty List...');
+        const jobs = [];
+        try {
+            // 직무 1번 (프로그래밍 등 주요 직무) 수집
+            const url = `https://www.gamejob.co.kr/Recruit/joblist?menucode=duty&duty=1`;
+            const html = await fetchHtml(url);
+            const $ = cheerio.load(html);
+
+            $('.list.cf li').each((i, el) => {
+                const li = $(el);
+                const company = li.find('.company strong').text().trim();
+                const position = li.find('.description a strong').text().trim() || li.find('.description a').text().trim();
+                const path = li.find('.description a').attr('href');
+
+                if (!company || !position || !path) return;
+
+                const link = normalizeLink('https://www.gamejob.co.kr' + path);
+                const deadlineText = li.find('.dday').text().trim();
+
+                const job = {
+                    company,
+                    position,
+                    link,
+                    deadline: DateUtils.parse(deadlineText),
+                    job_type: '신입/경력',
+                    category: '게임',
+                    tags: ['게임잡'],
+                    is_active: true
+                };
+
+                if (Filter.isValid(job)) {
+                    jobs.push(job);
+                }
+            });
+            return jobs;
+        } catch (e) {
+            console.error('Gamejob Duty Error:', e.message);
+            return jobs;
+        }
+    },
+
     // 4. 잡코리아 - 1~30페이지 수집
     async crawlJobKorea() {
         console.log('Crawling JobKorea (Pages 1-30)...');
@@ -522,6 +565,10 @@ async function main() {
     const gamejob = await Crawler.crawlGamejob();
     console.log(`Gamejob: ${gamejob.length} jobs`);
     allJobs.push(...gamejob);
+
+    const gamejobDuty = await Crawler.crawlGamejobDuty();
+    console.log(`Gamejob Duty: ${gamejobDuty.length} jobs`);
+    allJobs.push(...gamejobDuty);
 
     const saramin = await Crawler.crawlSaramin();
     console.log(`Saramin: ${saramin.length} jobs`);
