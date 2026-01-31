@@ -5,6 +5,7 @@
 
 const axios = require('axios');
 const cheerio = require('cheerio');
+require('dotenv').config();
 
 // 설정 (보안을 위해 환경변수 필수 사용)
 const API_URL = process.env.SUPABASE_API_URL;
