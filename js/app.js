@@ -149,85 +149,85 @@ const COMPANY_LINKS = [
         name: '크래프톤',
         desc: 'PUBG, 배그, 뉴스테이트',
         class: 'krafton',
-        url: 'https://www.wanted.co.kr/search?query=%ED%81%AC%EB%9E%98%ED%94%84%ED%86%A4&tab=company'
+        url: 'https://krafton.recruiter.co.kr/app/jobnotice/list'
     },
     {
         name: '넥슨',
         desc: '메이플스토리, 던파',
         class: 'nexon',
-        url: 'https://www.wanted.co.kr/search?query=%EB%84%A5%EC%8A%A8&tab=company'
+        url: 'https://careers.nexon.com/recruit'
     },
     {
         name: '엔씨소프트',
         desc: '리니지, TL, 블소',
         class: 'ncsoft',
-        url: 'https://www.wanted.co.kr/search?query=%EC%97%94%EC%94%A8%EC%86%8C%ED%94%84%ED%8A%B8&tab=company'
+        url: 'https://careers.ncsoft.com/apply/list'
     },
     {
         name: '넷마블',
         desc: '세븐나이츠, 일곱개의대죄',
         class: 'netmarble',
-        url: 'https://www.wanted.co.kr/search?query=%EB%84%B7%EB%A7%88%EB%B8%94&tab=company'
+        url: 'https://career.netmarble.com/announce'
     },
     {
         name: '컴투스',
         desc: '서머너즈워, 크로니클',
         class: 'com2us',
-        url: 'https://www.wanted.co.kr/search?query=%EC%BB%B4%ED%88%AC%EC%8A%A4&tab=company'
+        url: 'https://com2us.recruiter.co.kr/career/jobs'
     },
     {
         name: 'NHN',
         desc: '한게임',
         class: 'nhn',
-        url: 'https://www.wanted.co.kr/search?query=NHN&tab=company'
+        url: 'https://careers.nhn.com/recruits'
     },
     {
         name: '펄어비스',
         desc: '검은사막, 붉은사막',
         class: 'pearl',
-        url: 'https://www.wanted.co.kr/search?query=%ED%8E%84%EC%96%B4%EB%B9%84%EC%8A%A4&tab=company'
+        url: 'https://www.pearlabyss.com/ko-KR/Company/Careers/List'
     },
     {
         name: '스마일게이트',
         desc: '로스트아크, 크로스파이어',
         class: 'smilegate',
-        url: 'https://www.wanted.co.kr/search?query=%EC%8A%A4%EB%A7%88%EC%9D%BC%EA%B2%8C%EC%9D%B4%ED%8A%B8&tab=company'
+        url: 'https://careers.smilegate.com/apply/announce'
     },
     {
         name: '카카오게임즈',
         desc: '오딘, 우마무스메',
         class: 'kakao',
-        url: 'https://www.wanted.co.kr/search?query=%EC%B9%B4%EC%B9%B4%EC%98%A4%EA%B2%8C%EC%9E%84%EC%A6%88&tab=company'
+        url: 'https://recruit.kakaogames.com/ko/joinjuskr'
     },
     {
         name: '위메이드',
         desc: '미르4, 미르M',
         class: 'wemade',
-        url: 'https://www.wanted.co.kr/search?query=%EC%9C%84%EB%A9%94%EC%9D%B4%EB%93%9C&tab=company'
+        url: 'https://recruit.wemade.com/d0pt054k'
     },
     {
         name: '데브시스터즈',
         desc: '쿠키런',
         class: 'devsisters',
-        url: 'https://www.wanted.co.kr/search?query=%EB%8D%B0%EB%B8%8C%EC%8B%9C%EC%8A%A4%ED%84%B0%EC%A6%88&tab=company'
+        url: 'https://careers.devsisters.com/ko/position'
     },
     {
         name: '시프트업',
         desc: '승리의여신:니케, 스텔라블레이드',
         class: 'shiftup',
-        url: 'https://www.wanted.co.kr/search?query=%EC%8B%9C%ED%94%84%ED%8A%B8%EC%97%85&tab=company'
+        url: 'https://shiftup.co.kr/recruit/recruit.php'
     },
     {
         name: '네오위즈',
         desc: 'P의거짓, 브라운더스트',
         class: 'neowiz',
-        url: 'https://www.wanted.co.kr/search?query=%EB%84%A4%EC%98%A4%EC%9C%84%EC%A6%88&tab=company'
+        url: 'https://www.neowiz.com/kr/career/browse-job'
     },
     {
         name: '그라비티',
         desc: '라그나로크',
         class: 'gravity',
-        url: 'https://www.wanted.co.kr/search?query=%EA%B7%B8%EB%9D%BC%EB%B9%84%ED%8B%B0&tab=company'
+        url: 'https://www.gravity.co.kr/kr/recruit/people.asp'
     }
 ];
 
