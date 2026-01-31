@@ -16,8 +16,8 @@ const CONFIG = {
     // Supabase 연동 정보 (무료 클라우드 DB)
     // 실제 사용 시 Supabase 프로젝트 생성 후 아래 값을 채워주세요.
     SUPABASE: {
-        URL: '', // GitHub Secrets 또는 배포 환경변수에서 주입 필요
-        KEY: '', // 클라이언트 측 노출 주의 (Anon Key만 사용)
+        URL: '{{SUPABASE_URL}}',
+        KEY: '{{SUPABASE_KEY}}',
         TABLE_NAME: 'job-postings'
     },
 
