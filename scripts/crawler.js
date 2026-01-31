@@ -449,9 +449,7 @@ const Crawler = {
         console.log(`[Sync] 총 ${jobs.length}개의 수집된 공고 분석 중...`);
 
         // 1. 수집된 리스트 자체의 중복 제거
-        const uniqueColl = [];
-        const seenLinks = new Set();
-        const seenKeys = new Set(); // (회사명 + 공고명) 중복 방지
+        const uniqueMap = new Map();
         let internalDupCount = 0;
 
         for (const j of jobs) {
@@ -463,21 +461,22 @@ const Crawler = {
             const cleanPosition = (j.position || '').replace(/\s+/g, '').toLowerCase();
             const key = `${cleanCompany}|${cleanPosition}`;
 
-            if (seenLinks.has(nl) || seenKeys.has(key)) {
+            // 링크나 (회사+제목) 키가 이미 있으면 건너뜀
+            if (uniqueMap.has(nl) || Array.from(uniqueMap.values()).some(v => v.key === key)) {
                 internalDupCount++;
                 continue;
             }
 
-            uniqueColl.push({ ...j, link: nl });
-            seenLinks.add(nl);
-            seenKeys.add(key);
+            uniqueMap.set(nl, { ...j, link: nl, key: key });
         }
+
+        const uniqueColl = Array.from(uniqueMap.values()).map(({ key, ...job }) => job);
 
         console.log(`[Sync] 내부 중복(링크/제목) ${internalDupCount}건 제거됨. (고유 공고: ${uniqueColl.length}건)`);
 
         let existingLinks = new Set();
         try {
-            const res = await api.get('/', {
+            const res = await api.get('', {
                 params: { select: 'link' },
                 headers: { 'Range': '0-999' }
             });
