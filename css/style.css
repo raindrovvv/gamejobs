@@ -324,6 +324,26 @@ img {
 .nav {
     display: flex;
     gap: 8px;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .nav {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        padding: 10px 0;
+        gap: 4px;
+        -webkit-overflow-scrolling: touch;
+        border-top: 1px solid var(--border-color);
+        scrollbar-width: none;
+        /* Hide scrollbar for Firefox */
+    }
+
+    .nav::-webkit-scrollbar {
+        display: none;
+        /* Hide scrollbar for Chrome/Safari */
+    }
 }
 
 .nav-link {
@@ -352,6 +372,12 @@ img {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+@media (max-width: 768px) {
+    .header-actions {
+        gap: 5px;
+    }
 }
 
 .mobile-menu-btn {
@@ -1744,20 +1770,61 @@ img {
    Responsive Design
    =================================== */
 @media (max-width: 1100px) {
-    .nav {
-        display: none;
-    }
 
+    /* Previously hidden elements are now shown or handled differently */
     .mobile-menu-btn {
-        display: flex;
+        display: none;
+        /* Hide hamburger as we use scrollable tabs */
     }
 
     .mobile-menu {
-        display: block;
+        display: none;
     }
 
-    .header-actions .btn {
+    .nav {
+        /* On medium screens, keep it visible */
+        display: flex;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --header-height: 110px;
+        /* Increased height for two-row header */
+    }
+
+    .header-content {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px 0;
+        gap: 10px;
+    }
+
+    .logo {
+        flex: 1;
+    }
+
+    .nav-link {
+        padding: 8px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .header-actions {
+        order: 2;
+    }
+
+    /* Hide text on admin button for mobile */
+    #admin-btn span {
         display: none;
+    }
+
+    #admin-btn {
+        padding: 10px;
+        width: 40px;
+        height: 40px;
+        justify-content: center;
     }
 }
 
