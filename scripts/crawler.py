@@ -104,6 +104,43 @@ class JobCrawler:
             print(f"Gamejob error: {e}")
         return jobs
 
+    def fetch_jobkorea(self):
+        """잡코리아 웹 스크래핑"""
+        print("Crawling JobKorea...")
+        jobs = []
+        try:
+            # careerType=1: 신입
+            url = "https://www.jobkorea.co.kr/Search/?stext=%EA%B2%8C%EC%9E%84%20%EC%8B%A0%EC%9E%85&careerType=1"
+            res = requests.get(url, headers=self.headers)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            items = soup.select('.list-default .list-post')
+            
+            for item in items:
+                try:
+                    company = item.select_one('.name').text.strip()
+                    pos_el = item.select_one('.title')
+                    position = pos_el.text.strip()
+                    link = "https://www.jobkorea.co.kr" + pos_el['href']
+                    
+                    # 마감일 추출
+                    date_el = item.select_one('.date')
+                    deadline = self.parse_date(date_el.text) if date_el else None
+                    
+                    jobs.append({
+                        'company': company,
+                        'position': position,
+                        'link': link,
+                        'deadline': deadline,
+                        'job_type': '신입',
+                        'category': '게임',
+                        'tags': ['잡코리아', '게임'],
+                        'is_active': True
+                    })
+                except: continue
+        except Exception as e:
+            print(f"JobKorea error: {e}")
+        return jobs
+
     def parse_date(self, text):
         now = datetime.now()
         match = re.search(r'(\d{2})/(\d{2})', text)
@@ -161,9 +198,9 @@ def main():
     all_data.extend(crawler.fetch_wanted())
     all_data.extend(crawler.fetch_saramin())
     all_data.extend(crawler.fetch_gamejob())
-    # 잡코리아, 잡플래닛 등도 위와 유사한 패턴으로 추가 가능합니다.
+    all_data.extend(crawler.fetch_jobkorea())
     
-    crawler.sync(all_data)
+    crawler.sync_to_db(all_data)
 
 if __name__ == "__main__":
     main()
