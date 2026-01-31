@@ -229,39 +229,65 @@ const Crawler = {
         }
     },
 
-    // 2. 사람인 - 1~30페이지 수집 (약 1,500개 공고 검사)
+    // 2. 사람인 - 주요 게임사 검색 및 일반 검색 병행
     async crawlSaramin() {
-        console.log('Crawling Saramin (Parallel Pages 1-30)...');
-        const pages = Array.from({ length: 30 }, (_, i) => i + 1);
-        const tasks = pages.map(async (page) => {
-            try {
-                const url = `https://www.saramin.co.kr/zf_user/search/recruit?searchword=%EA%B2%8C%EC%9E%84%20%EC%8B%A0%EC%9E%85&exp_cd=1&sort=date&recruitPage=${page}`;
-                const html = await fetchHtml(url);
-                const $ = cheerio.load(html);
-                const pageJobs = [];
+        console.log('Crawling Saramin (Target Companies + General)...');
+        const TARGET_COMPANIES = [
+            '넥슨코리아', '엔씨소프트', '넷마블', '크래프톤', '펄어비스', '스마일게이트', '컴투스', '카카오게임즈',
+            '웹젠', '그라비티', '네오위즈', '위메이드', '데브시스터즈', '시프트업', '라인게임즈', '하이브IM',
+            '넥슨게임즈', '엔픽셀', '원더피플', '베스파', '액션스퀘어', '조이시티', '엑스엘게임즈'
+        ];
 
-                $('.item_recruit').each((i, el) => {
-                    const company = $(el).find('.corp_name a').text().trim();
-                    const position = $(el).find('.job_tit a').text().trim();
-                    const link = normalizeLink('https://www.saramin.co.kr' + $(el).find('.job_tit a').attr('href'));
-                    const deadlineText = $(el).find('.date').text().trim();
+        // 검색어 목록 생성 (일반 검색어 + 기업명 검색어)
+        const searchQueries = ['게임 신입', ...TARGET_COMPANIES];
+        const allJobs = [];
 
-                    const job = {
-                        company, position, link,
-                        deadline: DateUtils.parse(deadlineText),
-                        job_type: '신입', category: '기타', tags: ['사람인'], is_active: true
-                    };
+        // 기업별 검색은 1페이지만 (정확도 높음), 일반 검색은 10페이지까지
+        for (const query of searchQueries) {
+            const isCompanySearch = TARGET_COMPANIES.includes(query);
+            const maxPage = isCompanySearch ? 1 : 10;
 
-                    if (Filter.isValid(job)) pageJobs.push(job);
-                });
-                return pageJobs;
-            } catch (e) {
-                return [];
-            }
-        });
+            console.log(`[Saramin] Searching for '${query}' (Pages 1-${maxPage})...`);
 
-        const results = await Promise.all(tasks);
-        return results.flat();
+            const pages = Array.from({ length: maxPage }, (_, i) => i + 1);
+            const tasks = pages.map(async (page) => {
+                try {
+                    const encodedQuery = encodeURIComponent(query);
+                    // 기업명 검색의 경우 정확도를 높이기 위해 검색 옵션 조정 가능 (현재는 통합검색 유지)
+                    const url = `https://www.saramin.co.kr/zf_user/search/recruit?searchword=${encodedQuery}&exp_cd=1&sort=date&recruitPage=${page}`;
+                    const html = await fetchHtml(url);
+                    const $ = cheerio.load(html);
+                    const pageJobs = [];
+
+                    $('.item_recruit').each((i, el) => {
+                        const company = $(el).find('.corp_name a').text().trim();
+                        const position = $(el).find('.job_tit a').text().trim();
+                        const link = normalizeLink('https://www.saramin.co.kr' + $(el).find('.job_tit a').attr('href'));
+                        const deadlineText = $(el).find('.date').text().trim();
+
+                        const job = {
+                            company, position, link,
+                            deadline: DateUtils.parse(deadlineText),
+                            job_type: '신입', category: '기타', tags: ['사람인'], is_active: true
+                        };
+
+                        // 기업명 검색일 경우 해당 기업이 맞는지 더블 체크 (선택사항)
+                        if (Filter.isValid(job)) pageJobs.push(job);
+                    });
+                    return pageJobs;
+                } catch (e) {
+                    return [];
+                }
+            });
+
+            const results = await Promise.all(tasks);
+            allJobs.push(...results.flat());
+
+            // API 부하 방지용 딜레이
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        return allJobs;
     },
 
     // 3. 게임잡 - 1~30페이지 수집
@@ -345,13 +371,27 @@ const Crawler = {
         }
     },
 
-    // 4. 잡코리아 - 1~30페이지 수집
+    // 5. 잡코리아 - 주요 게임사 검색 및 일반 검색
     async crawlJobKorea() {
-        console.log('Crawling JobKorea (Pages 1-30)...');
-        const jobs = [];
-        try {
-            for (let page = 1; page <= 30; page++) {
-                const url = `https://www.jobkorea.co.kr/Search/?stext=%EA%B2%8C%EC%9E%84%20%EC%8B%A0%EC%9E%85&tabType=recruit&Page_No=${page}`;
+        console.log('Crawling JobKorea (Target Companies + General)...');
+        const TARGET_COMPANIES = [
+            '넥슨코리아', '엔씨소프트', '넷마블', '크래프톤', '펄어비스', '스마일게이트', '컴투스', '카카오게임즈',
+            '웹젠', '그라비티', '네오위즈', '위메이드', '데브시스터즈', '시프트업'
+        ];
+
+        const searchQueries = ['게임 신입', ...TARGET_COMPANIES];
+        const allJobs = [];
+
+        for (const query of searchQueries) {
+            const isCompanySearch = TARGET_COMPANIES.includes(query);
+            const maxPage = isCompanySearch ? 1 : 10;
+
+            console.log(`[JobKorea] Searching for '${query}' (Pages 1-${maxPage})...`);
+
+            for (let page = 1; page <= maxPage; page++) {
+                const encodedQuery = encodeURIComponent(query);
+                // careerType=1 (신입) 필터 적용
+                const url = `https://www.jobkorea.co.kr/Search/?stext=${encodedQuery}&careerType=1&tabType=recruit&Page_No=${page}`;
                 const html = await fetchHtml(url);
                 const $ = cheerio.load(html);
 
@@ -368,16 +408,17 @@ const Crawler = {
                         job_type: '신입', category: '기타', tags: ['잡코리아'], is_active: true
                     };
 
+                    // 기업명 검색시에는 Filter를 조금 더 관대하게 적용하거나 그대로 사용
                     if (Filter.isValid(job)) {
-                        jobs.push(job);
+                        allJobs.push(job);
                     }
                 });
+
+                // 봇 탐지 방지 딜레이
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
-            return jobs;
-        } catch (e) {
-            console.error('JobKorea Error:', e.message);
-            return jobs;
         }
+        return allJobs;
     },
 
     // 5. 서강대학교 경영대학 채용정보
