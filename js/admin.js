@@ -219,9 +219,29 @@ async function saveJob(skipReset = false) {
         deadline: adminElements.deadline.value || null,
         link: adminElements.link.value.trim() || null,
         tags: [...adminState.tags],
-        // description: adminElements.description.value.trim() || null, // DB schema missing this column
+        description: adminElements.description.value.trim() || null,
         is_active: adminElements.isActive.checked
     };
+
+    // --- Newcomer Safety Check ---
+    const checkText = (jobData.position + ' ' + (jobData.description || '')).toLowerCase();
+    const experiencedKeywords = ['경력직', '시니어', 'senior', 'experienced', '팀장', '파트장', 'lead', '전문가'];
+    const yearRegex = /\d+\s*년/;
+    const newcomerKeywords = ['신입', '인턴', 'intern', '경력무관', '졸업예정'];
+
+    const looksExperienced = experiencedKeywords.some(k => checkText.includes(k)) || yearRegex.test(checkText);
+    const hasNewcomerKeyword = newcomerKeywords.some(k => checkText.includes(k));
+
+    if (looksExperienced && !hasNewcomerKeyword) {
+        if (!confirm('경력직 공고이거나 요구 경력이 포함된 것으로 보입니다. 신입/인턴용 공고가 맞나요?\n(계속하려면 확인을 누르세요)')) {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = adminState.editingId ? '수정하기' : '등록하기';
+            }
+            return false;
+        }
+    }
+    // ----------------------------------
 
     try {
         let response;
@@ -233,8 +253,10 @@ async function saveJob(skipReset = false) {
         if (adminState.editingId) {
             // Update existing job
             const queryParam = getSupabaseQueryParam(adminState.editingId);
+            const fullUrl = `${fetchUrl}?${queryParam}`;
+            console.log(`[Admin] Updating job: ${fullUrl}`);
 
-            response = await fetch(`${fetchUrl}?${queryParam}`, {
+            response = await fetch(fullUrl, {
                 method: 'PATCH',
                 headers: getHeaders(),
                 body: JSON.stringify(jobData)

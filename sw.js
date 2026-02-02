@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gamejobs-v1';
+const CACHE_NAME = 'gamejobs-v2';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -22,6 +22,25 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // Admin related files should use Network First (always try network, fallback to cache)
+    if (event.request.url.includes('admin.html') || event.request.url.includes('js/admin.js')) {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    // Update cache with new version if successful
+                    if (response && response.status === 200) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((response) => {
             return response || fetch(event.request);

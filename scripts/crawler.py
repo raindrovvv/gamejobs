@@ -105,40 +105,102 @@ class JobCrawler:
         return jobs
 
     def fetch_jobkorea(self):
-        """잡코리아 웹 스크래핑"""
+        """잡코리아 웹 스크래핑 (개선됨)"""
         print("Crawling JobKorea...")
         jobs = []
-        try:
-            # careerType=1: 신입
-            url = "https://www.jobkorea.co.kr/Search/?stext=%EA%B2%8C%EC%9E%84%20%EC%8B%A0%EC%9E%85&careerType=1"
-            res = requests.get(url, headers=self.headers)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            items = soup.select('.list-default .list-post')
-            
-            for item in items:
+        
+        # 검색 URL 목록 (신입 전용 필터 적용: careerType=1)
+        # 1000240: 게임기획/개발/운영 직무 코드
+        base_urls = [
+            "https://www.jobkorea.co.kr/Search/?stext=언리얼&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=유니티&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=게임&duty=1000240&careerType=1&tabType=recruit"
+        ]
+
+        seen_links = set()
+
+        for base_url in base_urls:
+            print(f"  Searching: {base_url}...")
+            # 페이지네이션 (1~3페이지)
+            for page in range(1, 4):
                 try:
-                    company = item.select_one('.name').text.strip()
-                    pos_el = item.select_one('.title')
-                    position = pos_el.text.strip()
-                    link = "https://www.jobkorea.co.kr" + pos_el['href']
+                    target_url = f"{base_url}&Page_No={page}"
+                    res = requests.get(target_url, headers=self.headers)
+                    if res.status_code != 200:
+                        continue
+                        
+                    soup = BeautifulSoup(res.text, 'html.parser')
                     
-                    # 마감일 추출
-                    date_el = item.select_one('.date')
-                    deadline = self.parse_date(date_el.text) if date_el else None
+                    # 잡코리아 기본 채용 공고 리스트 선택자
+                    items = soup.select('.list-default .list-post')
+                    if not items:
+                        break # 아이템이 없으면 다음 URL로
+
+                    for item in items:
+                        try:
+                            # 링크 및 제목 추출
+                            post_link_el = item.select_one('.post-list-info a.title')
+                            if not post_link_el:
+                                post_link_el = item.select_one('.title') # Fallback
+                            
+                            if not post_link_el: continue
+
+                            href = post_link_el.get('href')
+                            if not href or '/Recruit/GI_Read' not in href:
+                                continue
+                                
+                            link = "https://www.jobkorea.co.kr" + href
+                            
+                            if link in seen_links:
+                                continue
+                            seen_links.add(link)
+
+                            position = post_link_el.get('title') or post_link_el.text.strip()
+                            
+                            # 회사명 추출
+                            company_el = item.select_one('.post-list-corp .name')
+                            if not company_el:
+                                company_el = item.select_one('.name') # Fallback
+                            company = company_el.text.strip() if company_el else "잡코리아 채용"
+
+                            # 마감일 추출
+                            date_el = item.select_one('.post-list-info .date')
+                            if not date_el:
+                                date_el = item.select_one('.date')
+                            
+                            deadline = None
+                            if date_el:
+                                date_text = date_el.text.strip()
+                                # "~ 02/09(일)" 형식 파싱
+                                deadline = self.parse_date(date_text)
+
+                            # 카테고리 추론
+                            category = '기타'
+                            pos_lower = position.lower()
+                            if '기획' in pos_lower: category = '기획'
+                            elif any(k in pos_lower for k in ['클라이언트', '서버', '개발', '프로그래머', '언리얼', '유니티', 'c++', 'c#']): category = '프로그래밍'
+                            elif any(k in pos_lower for k in ['아트', '그래픽', '디자인', '모델러', '이펙트']): category = '아트'
+                            elif 'pm' in pos_lower or '사업' in pos_lower: category = '마케팅'
+
+                            jobs.append({
+                                'company': company,
+                                'position': position,
+                                'link': link,
+                                'deadline': deadline,
+                                'job_type': '신입', # 필터가 신입이므로 강제 지정
+                                'category': category,
+                                'tags': ['잡코리아', '게임'],
+                                'is_active': True
+                            })
+                        except Exception as e:
+                            # print(f"  Info extraction error: {e}")
+                            continue
+
+                except Exception as e:
+                    print(f"  Page error: {e}")
+                    continue
                     
-                    jobs.append({
-                        'company': company,
-                        'position': position,
-                        'link': link,
-                        'deadline': deadline,
-                        'job_type': '신입',
-                        'category': '게임',
-                        'tags': ['잡코리아', '게임'],
-                        'is_active': True
-                    })
-                except: continue
-        except Exception as e:
-            print(f"JobKorea error: {e}")
+        print(f"  > JobKorea: Found {len(jobs)} jobs")
         return jobs
 
     def parse_date(self, text):

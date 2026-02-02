@@ -630,7 +630,28 @@ function updateCompanyFilter() {
 function applyFiltersAndRender() {
     // Apply filters
     state.filteredJobs = state.jobs.filter(job => {
-        const jobText = (job.position + ' ' + (job.category || '') + ' ' + (job.job_type || '') + ' ' + (job.tags || []).join(' ')).toLowerCase();
+        const title = (job.position || '').toLowerCase();
+        const description = (job.description || '').toLowerCase();
+        const tags = (job.tags || []).map(t => t.toLowerCase()).join(' ');
+        const jobText = (title + ' ' + (job.category || '') + ' ' + (job.job_type || '') + ' ' + tags + ' ' + description).toLowerCase();
+
+        // --- NEW: Newcomer/Intern Validity Check ---
+        // These keywords definitively mean it's for newcomers
+        const newcomerKeywords = ['신입', '인턴', 'intern', '경력무관', '졸업예정', 'entry', 'junior'];
+        const isExplicitlyNewcomer = newcomerKeywords.some(k => jobText.includes(k));
+
+        // These keywords usually mean it's for experienced professionals
+        // Regular expressions for "X년차", "X년 이상"
+        const yearRegex = /\d+\s*년/;
+        const experiencedKeywords = ['경력직', '시니어', 'senior', 'experienced', '팀장', '파트장', 'lead', '전문가', '채용직급:'];
+
+        const hasExclusionKeyword = experiencedKeywords.some(k => jobText.includes(k)) || yearRegex.test(jobText);
+
+        // If it looks experienced but IS NOT explicitly marked as newcomer/intern/무관, exclude it
+        if (hasExclusionKeyword && !isExplicitlyNewcomer) {
+            return false;
+        }
+        // ------------------------------------------
 
         // Company filter
         if (state.filters.company && (!job.company || !job.company.toLowerCase().includes(state.filters.company.toLowerCase()))) {
@@ -658,15 +679,7 @@ function applyFiltersAndRender() {
 
             if (keywords) {
                 const hasMatch = keywords.some(k => jobText.includes(k.toLowerCase()));
-                // Special handling: '수시' is often default/implied if not 'intern' or 'public recruit'
-                if (filterType === '수시') {
-                    // If searching for '수시', we accept it if it matches keywords OR if it doesn't match '공채'/'인턴' explicitly
-                    // But strictly, let's stick to positive matches first.
-                    // A lot of jobs are just '신입', so '수시' filter should catch '신입' (added to keywords).
-                    if (!hasMatch) return false;
-                } else {
-                    if (!hasMatch) return false;
-                }
+                if (!hasMatch) return false;
             } else {
                 if (!job.job_type || !job.job_type.toLowerCase().includes(filterType.toLowerCase())) {
                     return false;
@@ -677,22 +690,14 @@ function applyFiltersAndRender() {
         // Engine filter
         if (state.filters.engine) {
             const engine = state.filters.engine;
-            const tags = job.tags || [];
-            // Combine all searchable text for engine detection
-            const textToSearch = (job.position + ' ' + (job.description || '') + ' ' + tags.join(' ')).toLowerCase();
-
+            // Use combined jobText which now includes description
             if (engine === '기타/자체엔진') {
-                // Check if neither Unreal nor Unity keywords are present
-                const hasUnreal = textToSearch.includes('언리얼') || textToSearch.includes('unreal');
-                const hasUnity = textToSearch.includes('유니티') || textToSearch.includes('unity');
-
-                if (hasUnreal || hasUnity) {
-                    return false;
-                }
+                const hasUnreal = jobText.includes('언리얼') || jobText.includes('unreal');
+                const hasUnity = jobText.includes('유니티') || jobText.includes('unity');
+                if (hasUnreal || hasUnity) return false;
             } else {
-                // Check for specific engine keywords
                 const targetKeywords = engine === '언리얼' ? ['언리얼', 'unreal'] : ['유니티', 'unity'];
-                const hasMatch = targetKeywords.some(keyword => textToSearch.includes(keyword));
+                const hasMatch = targetKeywords.some(keyword => jobText.includes(keyword));
                 if (!hasMatch) return false;
             }
         }
@@ -700,16 +705,7 @@ function applyFiltersAndRender() {
         // Search filter
         if (state.filters.search) {
             const searchLower = state.filters.search.toLowerCase();
-            const searchableText = [
-                job.company,
-                job.position,
-                job.category,
-                job.job_type,
-                job.description,
-                ...(job.tags || [])
-            ].join(' ').toLowerCase();
-
-            if (!searchableText.includes(searchLower)) {
+            if (!jobText.includes(searchLower)) {
                 return false;
             }
         }
