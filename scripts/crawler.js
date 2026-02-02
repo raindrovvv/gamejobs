@@ -21,15 +21,18 @@ if (!API_URL || !SUPABASE_KEY) {
 }
 
 async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
+    const isGamejob = url.includes('gamejob.co.kr');
     try {
         const config = {
-            timeout: 10000,
+            timeout: options.timeout || 30000, // 기본 30초로 상향
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Referer': isGamejob ? 'https://www.gamejob.co.kr/' : 'https://www.google.com/',
                 'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
+                'Connection': 'keep-alive',
                 ...options.headers
             },
             ...options
@@ -37,11 +40,14 @@ async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
         return await axios.get(url, config);
     } catch (e) {
         const status = e.response ? e.response.status : null;
+        const isTimeout = e.code === 'ECONNABORTED' || e.message.includes('timeout');
+
         // 500번대 에러 또는 네트워크 관련 에러(timeout, ENOTFOUND 등)인 경우 재시도
-        if (retries > 0 && (!status || status >= 500)) {
-            console.warn(`[Retry] ${url} 실패 (${status || e.code}). 재시도 중... (${retries}회 남음)`);
-            await new Promise(resolve => setTimeout(resolve, backoff));
-            return fetchWithRetry(url, options, retries - 1, backoff * 2);
+        if (retries > 0 && (isTimeout || !status || status >= 500)) {
+            const waitTime = isTimeout ? backoff * 2 : backoff;
+            console.warn(`[Retry] ${url} 실패 (${e.code || status}). ${waitTime}ms 후 재시도... (${retries}회 남음)`);
+            await sleep(waitTime);
+            return fetchWithRetry(url, { ...options, timeout: (options.timeout || 30000) + 10000 }, retries - 1, backoff * 2);
         }
         throw e;
     }
@@ -51,6 +57,10 @@ async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
 async function fetchHtml(url, encoding = 'utf-8') {
     try {
         const res = await fetchWithRetry(url, { responseType: 'arraybuffer' });
+        if (!res || !res.data) {
+            console.warn(`[Fetch] ${url} 응답 데이터가 비어있습니다.`);
+            return '';
+        }
         return iconv.decode(res.data, encoding);
     } catch (e) {
         console.error(`[Fetch] ${url} 에러:`, e.message);
@@ -428,7 +438,6 @@ const Crawler = {
             for (let page = 1; page <= maxPage; page++) {
                 try {
                     const encodedQuery = encodeURIComponent(query);
-                    // robots.txt 기준 /Search/ 보다는 /recruit/joblist 가 더 권장됨
                     const url = `https://www.jobkorea.co.kr/recruit/joblist?stext=${encodedQuery}${duty ? `&duty=${duty}` : ''}&careerType=1&Page_No=${page}`;
 
                     await sleep(2000 + Math.random() * 1000);
@@ -436,8 +445,8 @@ const Crawler = {
                     const html = await fetchHtml(url);
                     const $ = cheerio.load(html);
 
-                    let items = $('a[href*="/Recruit/GI_Read"]').closest('li');
-                    if (items.length === 0) items = $('a[href*="/Recruit/GI_Read"]').closest('div[class*="styles_"]');
+                    let items = $('.devloopArea');
+                    if (items.length === 0) items = $('a[href*="/Recruit/GI_Read"]').closest('li');
                     if (items.length === 0) items = $('.list-default .list-post');
 
                     if (items.length === 0) continue;
@@ -445,31 +454,41 @@ const Crawler = {
                     items.each((i, el) => {
                         try {
                             const post = $(el);
-                            const titleEl = post.find('a[href*="/Recruit/GI_Read"]');
-                            if (titleEl.length === 0) return;
+                            const allGiLinks = post.find('a[href*="/Recruit/GI_Read"]');
+                            if (allGiLinks.length === 0) return;
 
-                            const href = titleEl.attr('href');
-                            if (!href) return;
+                            let titleEl = allGiLinks.last();
+                            let href = titleEl.attr('href');
+                            let position = titleEl.text().trim().replace(/\s+/g, ' ');
+
+                            if (!position && allGiLinks.length > 1) {
+                                titleEl = allGiLinks.eq(allGiLinks.length - 2);
+                                href = titleEl.attr('href');
+                                position = titleEl.text().trim().replace(/\s+/g, ' ');
+                            }
+
+                            if (!href || !position) return;
 
                             const link = normalizeLink('https://www.jobkorea.co.kr' + href);
                             if (seenLinks.has(link)) return;
                             seenLinks.add(link);
 
-                            const position = titleEl.text().trim().replace(/\s+/g, ' ');
-                            if (!position) return;
-
-                            let company = post.find('img[alt$="로고"]').attr('alt')?.replace(' 로고', '') ||
-                                post.find('[class*="company"]').text().trim() ||
-                                post.find('.name').text().trim();
+                            let company = post.find('img').attr('alt')?.replace(' 썸네일', '') ||
+                                post.find('.name').text().trim() ||
+                                post.find('a[href*="/Recruit/Co_Read"]').first().text().trim();
 
                             if (!company || company.length < 2) {
-                                company = post.find('a[href*="/company/"]').first().text().trim();
+                                const link0Text = post.find('a').eq(0).text().trim();
+                                const link1Text = post.find('a').eq(1).text().trim();
+                                company = (link0Text && link0Text !== position) ? link0Text :
+                                    (link1Text && link1Text !== position) ? link1Text : "";
                             }
 
                             if (!company) company = "잡코리아 채용";
 
-                            const deadlineText = post.find('[class*="date"]').text().trim() ||
-                                post.find('.date').text().trim();
+                            const deadlineText = post.find('.deadline').text().trim() ||
+                                post.find('.date').text().trim() ||
+                                post.find('span:contains("~")').text().trim();
 
                             const job = {
                                 company,
