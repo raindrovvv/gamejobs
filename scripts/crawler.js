@@ -3,6 +3,8 @@
  * 대상: 게임잡, 잡코리아, 사람인, 원티드, 잡플래닛
  */
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
@@ -231,6 +233,8 @@ const Crawler = {
             const tags = '518';
             for (let offset = 0; offset <= 900; offset += 100) {
                 const url = `https://www.wanted.co.kr/api/v4/jobs?country=kr&tag_type_ids=${tags}&years=0&limit=100&offset=${offset}`;
+                // API 매너 딜레이
+                await sleep(500 + Math.random() * 500);
                 const res = await axios.get(url, { timeout: 10000 });
                 if (!res.data || !res.data.data) continue;
 
@@ -262,26 +266,24 @@ const Crawler = {
             '넥슨게임즈', '엔픽셀', '원더피플', '베스파', '액션스퀘어', '조이시티', '엑스엘게임즈'
         ];
 
-        // 검색어 목록 생성 (일반 검색어 + 기업명 검색어)
         const searchQueries = ['게임 신입', ...TARGET_COMPANIES];
         const allJobs = [];
 
-        // 기업별 검색은 1페이지만 (정확도 높음), 일반 검색은 10페이지까지
         for (const query of searchQueries) {
             const isCompanySearch = TARGET_COMPANIES.includes(query);
-            const maxPage = isCompanySearch ? 1 : 10;
+            const maxPage = isCompanySearch ? 1 : 5; // 페이지 수 축소하여 매너 크롤링
 
             console.log(`[Saramin] Searching for '${query}' (Pages 1-${maxPage})...`);
 
-            const pages = Array.from({ length: maxPage }, (_, i) => i + 1);
-            const tasks = pages.map(async (page) => {
+            for (let page = 1; page <= maxPage; page++) {
                 try {
+                    // robots.txt 준수 딜레이
+                    await sleep(1500 + Math.random() * 1000);
+
                     const encodedQuery = encodeURIComponent(query);
-                    // 기업명 검색의 경우 정확도를 높이기 위해 검색 옵션 조정 가능 (현재는 통합검색 유지)
                     const url = `https://www.saramin.co.kr/zf_user/search/recruit?searchword=${encodedQuery}&exp_cd=1&sort=date&recruitPage=${page}`;
                     const html = await fetchHtml(url);
                     const $ = cheerio.load(html);
-                    const pageJobs = [];
 
                     $('.item_recruit').each((i, el) => {
                         const company = $(el).find('.corp_name a').text().trim();
@@ -295,40 +297,44 @@ const Crawler = {
                             job_type: '신입', category: '기타', tags: ['사람인'], is_active: true
                         };
 
-                        // 기업명 검색일 경우 해당 기업이 맞는지 더블 체크 (선택사항)
-                        if (Filter.isValid(job)) pageJobs.push(job);
+                        if (Filter.isValid(job)) allJobs.push(job);
                     });
-                    return pageJobs;
                 } catch (e) {
-                    return [];
+                    console.error(`[Saramin] Query '${query}' Page ${page} Error:`, e.message);
                 }
-            });
-
-            const results = await Promise.all(tasks);
-            allJobs.push(...results.flat());
-
-            // API 부하 방지용 딜레이
-            await new Promise(resolve => setTimeout(resolve, 500));
+            }
         }
-
         return allJobs;
     },
 
-    // 3. 게임잡 - 1~30페이지 수집
+    // 3. 게임잡 - 직무별 수집 (신입)
     async crawlGamejob() {
-        console.log('Crawling Gamejob (Pages 1-30)...');
+        console.log('Crawling Gamejob (Duty-based for Newcomers)...');
         const jobs = [];
-        try {
-            for (let page = 1; page <= 30; page++) {
-                const url = `https://www.gamejob.co.kr/List_GI/GIB_List.asp?Part_No=0&Search_Word=%BD%C5%C0%D4&GI_Page=${page}`;
-                const html = await fetchHtml(url);
+        const duties = [0, 1, 2, 3, 4, 5, 6, 7];
+        const seenLinks = new Set();
+
+        for (const duty of duties) {
+            console.log(`[Gamejob] Crawling Duty: ${duty}...`);
+            try {
+                await sleep(2000 + Math.random() * 1000);
+
+                const url = `https://www.gamejob.co.kr/List_GI/GIB_List.asp?Part_No=${duty}&Search_Word=%BD%C5%C0%D4`;
+                const html = await fetchHtml(url, 'euc-kr');
                 const $ = cheerio.load(html);
 
                 $('.list tr[class^="row"]').each((i, el) => {
                     const company = $(el).find('.col-company a').text().trim();
                     const position = $(el).find('.col-subject a').text().trim();
                     if (!company) return;
-                    const normalizedLink = normalizeLink('https://www.gamejob.co.kr' + $(el).find('.col-subject a').attr('href'));
+
+                    const href = $(el).find('.col-subject a').attr('href');
+                    if (!href) return;
+
+                    const normalizedLink = normalizeLink('https://www.gamejob.co.kr' + href);
+                    if (seenLinks.has(normalizedLink)) return;
+                    seenLinks.add(normalizedLink);
+
                     const job = {
                         company,
                         position,
@@ -344,20 +350,19 @@ const Crawler = {
                         jobs.push(job);
                     }
                 });
+            } catch (e) {
+                console.error(`[Gamejob] Duty ${duty} Error:`, e.message);
             }
-            return jobs;
-        } catch (e) {
-            console.error('Gamejob Error:', e.message);
-            return jobs;
         }
+        return jobs;
     },
 
-    // 4. 게임잡 - 직무별 채용공고 (사용자 요청 추가)
+    // 4. 게임잡 - 직무별 채용공고 (추가 목록)
     async crawlGamejobDuty() {
         console.log('Crawling Gamejob Duty List...');
         const jobs = [];
         try {
-            // 직무 1번 (프로그래밍 등 주요 직무) 수집
+            await sleep(1000);
             const url = `https://www.gamejob.co.kr/Recruit/joblist?menucode=duty&duty=1`;
             const html = await fetchHtml(url);
             const $ = cheerio.load(html);
@@ -406,7 +411,7 @@ const Crawler = {
             { query: 'Client Programmer', duty: '' },
             { query: 'Server Programmer', duty: '' },
             { query: 'Game Developer', duty: '' },
-            { query: '게임', duty: '1000240' } // 게임기획/개발/운영
+            { query: '게임', duty: '1000240' }
         ];
 
         const allJobs = [];
@@ -422,27 +427,23 @@ const Crawler = {
             for (let page = 1; page <= maxPage; page++) {
                 try {
                     const encodedQuery = encodeURIComponent(query);
-                    // careerType=1 (신입) 필터 적용
-                    const url = `https://www.jobkorea.co.kr/Search/?stext=${encodedQuery}${duty ? `&duty=${duty}` : ''}&careerType=1&tabType=recruit&Page_No=${page}`;
+                    // robots.txt 기준 /Search/ 보다는 /recruit/joblist 가 더 권장됨
+                    const url = `https://www.jobkorea.co.kr/recruit/joblist?stext=${encodedQuery}${duty ? `&duty=${duty}` : ''}&careerType=1&Page_No=${page}`;
+
+                    await sleep(2000 + Math.random() * 1000);
 
                     const html = await fetchHtml(url);
                     const $ = cheerio.load(html);
 
-                    // 잡코리아 페이지 구조가 Next.js로 변경됨에 따라 유연한 선택자 사용
-                    // 1. /Recruit/GI_Read 링크를 포함하는 모든 a 태그 찾기
                     let items = $('a[href*="/Recruit/GI_Read"]').closest('li');
                     if (items.length === 0) items = $('a[href*="/Recruit/GI_Read"]').closest('div[class*="styles_"]');
-                    if (items.length === 0) items = $('.list-default .list-post'); // 구 버전 대응
+                    if (items.length === 0) items = $('.list-default .list-post');
 
-                    if (items.length === 0) {
-                        // console.log(`[JobKorea] No items found for ${query} on page ${page}`);
-                        continue;
-                    }
+                    if (items.length === 0) continue;
 
                     items.each((i, el) => {
                         try {
                             const post = $(el);
-                            // 제목 및 링크 추출 (다양한 클래스 패턴 대응)
                             const titleEl = post.find('a[href*="/Recruit/GI_Read"]');
                             if (titleEl.length === 0) return;
 
@@ -453,23 +454,19 @@ const Crawler = {
                             if (seenLinks.has(link)) return;
                             seenLinks.add(link);
 
-                            // 제목 텍스트 (줄바꿈 및 공백 정리)
                             const position = titleEl.text().trim().replace(/\s+/g, ' ');
                             if (!position) return;
 
-                            // 회사명 추출 (이미지 alt나 주변 텍스트에서 찾기)
                             let company = post.find('img[alt$="로고"]').attr('alt')?.replace(' 로고', '') ||
                                 post.find('[class*="company"]').text().trim() ||
                                 post.find('.name').text().trim();
 
                             if (!company || company.length < 2) {
-                                // 주변의 강력한 후보군 찾기
                                 company = post.find('a[href*="/company/"]').first().text().trim();
                             }
 
                             if (!company) company = "잡코리아 채용";
 
-                            // 마감일 추출
                             const deadlineText = post.find('[class*="date"]').text().trim() ||
                                 post.find('.date').text().trim();
 
@@ -484,7 +481,6 @@ const Crawler = {
                                 is_active: true
                             };
 
-                            // 카테고리 추론 (app.js 로직과 유사하게 혹은 여기서 간단히)
                             const posLower = position.toLowerCase();
                             if (posLower.includes('기획')) job.category = '기획';
                             else if (['클라이언트', '서버', '개발', '프로그래머', '언리얼', '유니티', 'c++', 'c#'].some(k => posLower.includes(k))) job.category = '프로그래밍';
@@ -493,16 +489,11 @@ const Crawler = {
                             if (Filter.isValid(job)) {
                                 allJobs.push(job);
                             }
-                        } catch (innerE) {
-                            // Skip individual item error
-                        }
+                        } catch (innerE) { }
                     });
                 } catch (e) {
                     console.error(`[JobKorea] Page ${page} Error:`, e.message);
                 }
-
-                // 봇 탐지 방지 딜레이
-                await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
         return allJobs;
@@ -521,12 +512,8 @@ const Crawler = {
                 const text = $(el).text().trim();
                 const href = $(el).attr('href');
 
-                // [커리어]로 시작하는 게시글만 파싱
                 if (text.includes('[커리어]') && href && href.includes('cmsboardview.do')) {
                     const fullLink = 'https://sbs.sogang.ac.kr' + href;
-
-                    // 제목 파싱: [커리어] 회사명 공고명 (~마감일)
-                    // 예: [커리어] (주)넥슨코리아 2024년 하반기 채용 (~10/4)
                     const match = text.match(/\[커리어\]\s*(.+?)\s+(.+?)\s*\((~.*?)\)/);
                     let company = '';
                     let position = text.replace('[커리어]', '').trim();
@@ -537,7 +524,6 @@ const Crawler = {
                         position = match[2].trim();
                         deadlineText = match[3].trim();
                     } else {
-                        // 패턴이 매칭되지 않을 경우를 대비한 기본적인 분리
                         const parts = position.split(' ');
                         if (parts.length > 1) {
                             company = parts[0];
@@ -558,13 +544,11 @@ const Crawler = {
                         is_active: true
                     };
 
-                    // Filter.isValid를 통해 게임 관련 공고(넥슨 등)만 걸러냄
                     if (Filter.isValid(job)) {
                         jobs.push(job);
                     }
                 }
             });
-            console.log(`Sogang: ${jobs.length} jobs found after filtering`);
             return jobs;
         } catch (e) {
             console.error('Sogang Error:', e.message);
@@ -572,11 +556,8 @@ const Crawler = {
         }
     },
 
-    // 데이터 동기화 - 벌크 업서트 처리를 통한 리소스 최적화
     async sync(jobs) {
         console.log(`[Sync] 총 ${jobs.length}개의 수집된 공고 분석 중...`);
-
-        // 1. 수집된 리스트 자체의 중복 제거
         const uniqueMap = new Map();
         let internalDupCount = 0;
 
@@ -584,12 +565,10 @@ const Crawler = {
             const nl = normalizeLink(j.link);
             if (!nl) continue;
 
-            // 키 생성 시 공백 제거 및 소문자화 (매우 강력한 중복 방지)
             const cleanCompany = (j.company || '').replace(/\s+/g, '').toLowerCase();
             const cleanPosition = (j.position || '').replace(/\s+/g, '').toLowerCase();
             const key = `${cleanCompany}|${cleanPosition}`;
 
-            // 링크나 (회사+제목) 키가 이미 있으면 건너뜀
             if (uniqueMap.has(nl) || Array.from(uniqueMap.values()).some(v => v.key === key)) {
                 internalDupCount++;
                 continue;
@@ -599,7 +578,6 @@ const Crawler = {
         }
 
         const uniqueColl = Array.from(uniqueMap.values()).map(({ key, ...job }) => job);
-
         console.log(`[Sync] 내부 중복(링크/제목) ${internalDupCount}건 제거됨. (고유 공고: ${uniqueColl.length}건)`);
 
         let existingLinks = new Set();
@@ -611,75 +589,41 @@ const Crawler = {
             const data = res.data;
             const jobsList = Array.isArray(data) ? data : (data.data || []);
             existingLinks = new Set(jobsList.map(j => normalizeLink(j.link)).filter(l => l));
-            console.log(`[Sync] DB내 기존 데이터 ${existingLinks.size}건 확인됨.`);
         } catch (e) {
-            console.error('[Sync] 기존 목록 조회 에러:', e.response ? JSON.stringify(e.response.data) : e.message);
+            console.error('[Sync] 기존 목록 조회 에러:', e.message);
         }
 
-        if (uniqueColl.length === 0) {
-            console.log('[Sync] 수집된 새로운 공고가 없습니다.');
-            return;
-        }
+        if (uniqueColl.length === 0) return;
 
-        console.log(`[Sync] ${uniqueColl.length}개의 공고를 벌크 업서트(${existingLinks.size > 0 ? '갱신 포함' : '신규 전용'}) 중...`);
-
-        // 벌크 처리를 통해 네트워크 라운드트립 감소 (성능 개선)
         const BATCH_SIZE = 50;
         let successCount = 0;
 
         for (let i = 0; i < uniqueColl.length; i += BATCH_SIZE) {
             const batch = uniqueColl.slice(i, i + BATCH_SIZE);
             try {
-                // Supabase upsert: link를 기준으로 중복 시 업데이트
                 await api.post('', batch);
                 successCount += batch.length;
                 console.log(`[Sync] Progress: ${successCount}/${uniqueColl.length} 동기화 완료`);
             } catch (e) {
-                console.error(`[Sync] Batch ${i / BATCH_SIZE + 1} 에러:`, e.response ? JSON.stringify(e.response.data) : e.message);
-                // 배치 실패 시 1개씩 재시도하는 Fallback (안정성 강화)
-                if (batch.length > 1) {
-                    console.warn('[Sync] 배치가 실패하여 개별 동기화로 전환합니다...');
-                    for (const item of batch) {
-                        try { await api.post('', [item]); successCount++; }
-                        catch (innerErr) { console.error(`[Sync] 개별 항목 에러: ${item.company} | ${item.position}`); }
-                    }
+                console.warn('[Sync] 배치가 실패하여 개별 동기화로 전환합니다...');
+                for (const item of batch) {
+                    try { await api.post('', [item]); successCount++; } catch (err) { }
                 }
             }
         }
-
-        console.log(`[Sync] 최종 성공: ${successCount}건 처리 완료.`);
-
-        // 4. 만료된 공고 자동 처리 (마감일 지난 것들)
         await this.cleanup();
     },
 
-    // 만료 공고 비활성화 및 아주 오래된 데이터 삭제
     async cleanup() {
-        console.log('[Cleanup] 만료된 공고 및 오래된 데이터 정리 중...');
+        console.log('[Cleanup] 만료된 공고 정리 중...');
         try {
             const today = new Date().toISOString().split('T')[0];
-
-            // 1. 마감기한이 지난 공고 비활성화 (is_active = false)
-            // Supabase에 직접 쿼리: deadline < today AND is_active = true
-            const deactivateRes = await api.patch('',
-                { is_active: false },
-                { params: { deadline: `lt.${today}`, is_active: 'eq.true' } }
-            );
-            console.log('[Cleanup] 마감 기한이 지난 공고를 비활성화했습니다.');
-
-            // 2. 너무 오래된 공고 삭제 (예: 마감된 지 30일 이상 지난 데이터)
+            await api.patch('', { is_active: false }, { params: { deadline: `lt.${today}`, is_active: 'eq.true' } });
             const archiveDate = new Date();
             archiveDate.setDate(archiveDate.getDate() - 30);
             const archiveStr = archiveDate.toISOString().split('T')[0];
-
-            const deleteOldRes = await api.delete('', {
-                params: { deadline: `lt.${archiveStr}`, is_active: 'eq.false' }
-            });
-            console.log(`[Cleanup] 마감된 지 30일이 지난 오래된 데이터를 정리했습니다.`);
-
-        } catch (e) {
-            console.error('[Cleanup] 에러:', e.response ? JSON.stringify(e.response.data) : e.message);
-        }
+            await api.delete('', { params: { deadline: `lt.${archiveStr}`, is_active: 'eq.false' } });
+        } catch (e) { }
     }
 };
 

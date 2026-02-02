@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import json
 import re
 from datetime import datetime
+import time
+import random
 
 class JobCrawler:
     def __init__(self, api_url):
@@ -45,6 +47,8 @@ class JobCrawler:
         print("Crawling Wanted...")
         jobs = []
         try:
+            # robots.txt 준수 및 IP 차단 방지 (원티드는 API지만 매너 유지)
+            time.sleep(1)
             # 518: 게임 개발 태그, years=0: 신입
             url = "https://www.wanted.co.kr/api/v4/jobs?country=kr&tag_type_ids=518&years=0&limit=20"
             res = requests.get(url, headers=self.headers)
@@ -72,6 +76,8 @@ class JobCrawler:
         print("Crawling Saramin...")
         jobs = []
         try:
+            # robots.txt 준수 딜레이
+            time.sleep(1 + random.random())
             url = "https://www.saramin.co.kr/zf_user/search/recruit?searchword=%EA%B2%8C%EC%9E%84+%EC%8B%A0%EC%9E%85&exp_cd=1"
             res = requests.get(url, headers=self.headers)
             soup = BeautifulSoup(res.text, 'html.parser')
@@ -107,6 +113,8 @@ class JobCrawler:
         print("Crawling Gamejob...")
         jobs = []
         try:
+            # robots.txt 준수 딜레이
+            time.sleep(1 + random.random())
             url = "https://www.gamejob.co.kr/List_GI/GIB_List.asp?Part_No=0&Search_Word=%BD%C5%C0%D4"
             res = requests.get(url, headers=self.headers)
             res.encoding = 'euc-kr'
@@ -144,15 +152,16 @@ class JobCrawler:
         jobs = []
         
         # 검색 URL 목록 (신입 전용 필터 적용: careerType=1)
+        # robots.txt 기준 /Search/ 보다는 /recruit/joblist 가 더 권장됨
         base_urls = [
-            "https://www.jobkorea.co.kr/Search/?stext=언리얼&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=유니티&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=Unreal&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=Unity&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=Client+Programmer&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=Server+Programmer&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=Game+Developer&careerType=1&tabType=recruit",
-            "https://www.jobkorea.co.kr/Search/?stext=게임&duty=1000240&careerType=1&tabType=recruit"
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=언리얼&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=유니티&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=Unreal&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=Unity&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=Client+Programmer&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=Server+Programmer&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=Game+Developer&careerType=1",
+            "https://www.jobkorea.co.kr/recruit/joblist?stext=게임&duty=1000240&careerType=1"
         ]
 
         seen_links = set()
@@ -162,6 +171,8 @@ class JobCrawler:
             for page in range(1, 4):
                 try:
                     target_url = f"{base_url}&Page_No={page}"
+                    # robots.txt 준수 딜레이
+                    time.sleep(1.5 + random.random())
                     res = requests.get(target_url, headers=self.headers)
                     if res.status_code != 200:
                         continue
