@@ -371,51 +371,89 @@ const Crawler = {
         }
     },
 
-    // 5. 잡코리아 - 주요 게임사 검색 및 일반 검색
     async crawlJobKorea() {
-        console.log('Crawling JobKorea (Target Companies + General)...');
-        const TARGET_COMPANIES = [
-            '넥슨코리아', '엔씨소프트', '넷마블', '크래프톤', '펄어비스', '스마일게이트', '컴투스', '카카오게임즈',
-            '웹젠', '그라비티', '네오위즈', '위메이드', '데브시스터즈', '시프트업'
+        console.log('Crawling JobKorea (Improved - Multiple Queries)...');
+
+        const searchQueries = [
+            { query: '언리얼', duty: '' },
+            { query: '유니티', duty: '' },
+            { query: '게임', duty: '1000240' } // 게임기획/개발/운영
         ];
 
-        const searchQueries = ['게임 신입', ...TARGET_COMPANIES];
         const allJobs = [];
+        const seenLinks = new Set();
 
-        for (const query of searchQueries) {
-            const isCompanySearch = TARGET_COMPANIES.includes(query);
-            const maxPage = isCompanySearch ? 1 : 10;
+        for (const item of searchQueries) {
+            const query = item.query;
+            const duty = item.duty;
+            const maxPage = 3;
 
-            console.log(`[JobKorea] Searching for '${query}' (Pages 1-${maxPage})...`);
+            console.log(`[JobKorea] Searching for '${query}'${duty ? ` (duty: ${duty})` : ''} (Pages 1-${maxPage})...`);
 
             for (let page = 1; page <= maxPage; page++) {
-                const encodedQuery = encodeURIComponent(query);
-                // careerType=1 (신입) 필터 적용
-                const url = `https://www.jobkorea.co.kr/Search/?stext=${encodedQuery}&careerType=1&tabType=recruit&Page_No=${page}`;
-                const html = await fetchHtml(url);
-                const $ = cheerio.load(html);
+                try {
+                    const encodedQuery = encodeURIComponent(query);
+                    // careerType=1 (신입) 필터 적용
+                    const url = `https://www.jobkorea.co.kr/Search/?stext=${encodedQuery}${duty ? `&duty=${duty}` : ''}&careerType=1&tabType=recruit&Page_No=${page}`;
 
-                $('.list-post .post').each((i, el) => {
-                    const company = $(el).find('.name').text().trim();
-                    const position = $(el).find('.title').text().trim();
-                    const rawLink = 'https://www.jobkorea.co.kr' + $(el).find('.title').attr('href');
-                    const deadline = DateUtils.parse($(el).find('.date').text().trim());
+                    const html = await fetchHtml(url);
+                    const $ = cheerio.load(html);
 
-                    const job = {
-                        company, position,
-                        link: normalizeLink(rawLink),
-                        deadline,
-                        job_type: '신입', category: '기타', tags: ['잡코리아'], is_active: true
-                    };
+                    const items = $('.list-default .list-post');
+                    if (items.length === 0) break;
 
-                    // 기업명 검색시에는 Filter를 조금 더 관대하게 적용하거나 그대로 사용
-                    if (Filter.isValid(job)) {
-                        allJobs.push(job);
-                    }
-                });
+                    items.each((i, el) => {
+                        try {
+                            const post = $(el);
+                            const titleEl = post.find('.post-list-info a.title').length > 0 ? post.find('.post-list-info a.title') : post.find('.title');
+
+                            if (titleEl.length === 0) return;
+
+                            const href = titleEl.attr('href');
+                            if (!href || !href.includes('/Recruit/GI_Read')) return;
+
+                            const link = normalizeLink('https://www.jobkorea.co.kr' + href);
+                            if (seenLinks.has(link)) return;
+                            seenLinks.add(link);
+
+                            const position = titleEl.attr('title') || titleEl.text().trim();
+
+                            const companyEl = post.find('.post-list-corp .name').length > 0 ? post.find('.post-list-corp .name') : post.find('.name');
+                            const company = companyEl.text().strip ? companyEl.text().trim() : "잡코리아 채용";
+
+                            const dateEl = post.find('.post-list-info .date').length > 0 ? post.find('.post-list-info .date') : post.find('.date');
+                            const deadlineText = dateEl.text().trim();
+
+                            const job = {
+                                company,
+                                position,
+                                link,
+                                deadline: DateUtils.parse(deadlineText),
+                                job_type: '신입',
+                                category: '기타',
+                                tags: ['잡코리아'],
+                                is_active: true
+                            };
+
+                            // 카테고리 추론 (app.js 로직과 유사하게 혹은 여기서 간단히)
+                            const posLower = position.toLowerCase();
+                            if (posLower.includes('기획')) job.category = '기획';
+                            else if (['클라이언트', '서버', '개발', '프로그래머', '언리얼', '유니티', 'c++', 'c#'].some(k => posLower.includes(k))) job.category = '프로그래밍';
+                            else if (['아트', '그래픽', '디자인', '모델러', '이펙트'].some(k => posLower.includes(k))) job.category = '아트';
+
+                            if (Filter.isValid(job)) {
+                                allJobs.push(job);
+                            }
+                        } catch (innerE) {
+                            // Skip individual item error
+                        }
+                    });
+                } catch (e) {
+                    console.error(`[JobKorea] Page ${page} Error:`, e.message);
+                }
 
                 // 봇 탐지 방지 딜레이
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
         return allJobs;
