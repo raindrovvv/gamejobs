@@ -24,19 +24,22 @@ async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
     const isGamejob = url.includes('gamejob.co.kr');
     try {
         const config = {
-            timeout: options.timeout || 30000, // 기본 30초로 상향
+            timeout: options.timeout || 60000, // 60초로 변경
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
                 'Accept-Encoding': 'gzip, deflate, br',
-                'Referer': isGamejob ? 'https://www.gamejob.co.kr/' : 'https://www.google.com/',
+                'Referer': isGamejob ? 'https://www.gamejob.co.kr/' :
+                    url.includes('jobkorea.co.kr') ? 'https://www.jobkorea.co.kr/' : 'https://www.google.com/',
                 'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive',
                 ...options.headers
             },
             ...options
         };
+        // DEBUG: 타임아웃 설정 확인
+        console.log(`[Fetch] Timeout: ${config.timeout}ms, URL: ${url}`);
         return await axios.get(url, config);
     } catch (e) {
         const status = e.response ? e.response.status : null;
