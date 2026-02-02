@@ -26,15 +26,15 @@ class JobCrawler:
         if any(k in text for k in self.senior_keywords):
             return False
             
-        # 2. 연차 체크 (2년 이상 배제)
+        # 2. 연차 체크 (4년 이상 배제)
         year_match = re.search(r'(\d+)\s*년', text)
         if year_match:
             years = int(year_match.group(1))
-            if years >= 2:
-                # '신입'이 포함되어 있어도 3년 이상이면 배제
-                if years >= 3: return False
-                # 2년+ 인데 '신입' 키워드 없으면 배제
-                if '신입' not in text and '인턴' not in text: return False
+            # 4년 이상이면 무조건 배제 (1~3년까지만 허용)
+            if years >= 4: return False
+            # 2~3년인데 '신입'이나 '인턴' 키워드가 없으면 배제
+            if years >= 2 and '신입' not in text and '인턴' not in text:
+                return False
                 
         return True
 

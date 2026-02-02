@@ -110,13 +110,14 @@ const Filter = {
         // 규칙 1-1: 경력직 키워드 배제
         if (this.EXCLUDE_SENIOR.some(term => text.includes(term.toLowerCase()))) return false;
 
-        // 규칙 1-2: X년차 이상 배 배제 (RegEx)
+        // 규칙 1-2: X년차 이상 배제 (RegEx)
         const yearMatch = text.match(/(\d+)\s*년/);
-        if (yearMatch && parseInt(yearMatch[1], 10) >= 2) {
-            // "신입"이라는 단어가 함께 있으면 오탐 가능성이 있으니 한번 더 체크
-            if (!text.includes('신입') && !text.includes('인턴')) return false;
-            // 3년 이상이면 신입과 같이 써있어도 배제 (보통 '신입/경력'이어도 3년 이상 우대면 신입이 뽑히기 힘듦)
-            if (parseInt(yearMatch[1], 10) >= 3) return false;
+        if (yearMatch) {
+            const years = parseInt(yearMatch[1], 10);
+            // 4년 이상이면 무조건 배제 (1~3년까지만 신입/경력 혼합으로 간주)
+            if (years >= 4) return false;
+            // 2~3년인데 '신입'이나 '인턴' 키워드가 없으면 배제
+            if (years >= 2 && !text.includes('신입') && !text.includes('인턴')) return false;
         }
 
         // 규칙 2: 게임 관련 컨텍스트가 반드시 하나는 있어야 함

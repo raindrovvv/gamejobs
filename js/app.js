@@ -652,19 +652,19 @@ function applyFiltersAndRender() {
         const isSeniorTitle = seniorTitleKeywords.some(k => title.includes(k));
 
         // Regular expressions for "X년차", "X년 이상", "X년↑"
-        // Block if 2+ years are mentioned, but allow 0-1
+        // Block if 4+ years are mentioned (1~3 years limit)
         const yearMatch = jobText.match(/(\d+)\s*년/);
         const yearsRequired = yearMatch ? parseInt(yearMatch[1], 10) : 0;
-        const isExperiencedYear = yearsRequired >= 2;
+        const isExperiencedYear = yearsRequired >= 4;
 
-        const hasExclusionKeyword = experiencedKeywords.some(k => jobText.includes(k)) || isExperiencedYear || isSeniorTitle;
+        const hasExclusionKeyword = experiencedKeywords.some(k => jobText.includes(k)) || yearsRequired >= 2 || isSeniorTitle;
 
         // CRITICAL: If the TITLE itself shows seniority (e.g., "Lead", "5년 이상"), exclude it regardless of tags
-        if (isSeniorTitle || (isExperiencedYear && yearsRequired >= 3)) {
+        if (isSeniorTitle || isExperiencedYear) {
             return false;
         }
 
-        // If it looks experienced but IS NOT explicitly marked as newcomer/intern/무관, exclude it
+        // If it looks experienced (2-3 years) but IS NOT explicitly marked as newcomer/intern/무관, exclude it
         if (hasExclusionKeyword && !isExplicitlyNewcomer) {
             return false;
         }
