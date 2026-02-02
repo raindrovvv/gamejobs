@@ -7,6 +7,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const axios = require('axios');
 const cheerio = require('cheerio');
+const iconv = require('iconv-lite');
 require('dotenv').config();
 
 // 설정 (보안을 위해 환경변수 필수 사용)
@@ -50,7 +51,7 @@ async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
 async function fetchHtml(url, encoding = 'utf-8') {
     try {
         const res = await fetchWithRetry(url, { responseType: 'arraybuffer' });
-        return res.data.toString(encoding);
+        return iconv.decode(res.data, encoding);
     } catch (e) {
         console.error(`[Fetch] ${url} 에러:`, e.message);
         return '';
