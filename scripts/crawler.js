@@ -397,6 +397,11 @@ const Crawler = {
         const searchQueries = [
             { query: '언리얼', duty: '' },
             { query: '유니티', duty: '' },
+            { query: 'Unreal', duty: '' },
+            { query: 'Unity', duty: '' },
+            { query: 'Client Programmer', duty: '' },
+            { query: 'Server Programmer', duty: '' },
+            { query: 'Game Developer', duty: '' },
             { query: '게임', duty: '1000240' } // 게임기획/개발/운영
         ];
 
@@ -419,8 +424,15 @@ const Crawler = {
                     const html = await fetchHtml(url);
                     const $ = cheerio.load(html);
 
-                    const items = $('.list-default .list-post');
-                    if (items.length === 0) break;
+                    let items = $('.list-default .list-post');
+                    // Fallback selectors if the primary one fails
+                    if (items.length === 0) items = $('.list-post');
+                    if (items.length === 0) items = $('.post-list-info').closest('li');
+
+                    if (items.length === 0) {
+                        // console.log(`[JobKorea] No items found for ${query} on page ${page}`);
+                        break;
+                    }
 
                     items.each((i, el) => {
                         try {

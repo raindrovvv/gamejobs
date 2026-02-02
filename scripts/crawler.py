@@ -146,6 +146,11 @@ class JobCrawler:
         base_urls = [
             "https://www.jobkorea.co.kr/Search/?stext=언리얼&careerType=1&tabType=recruit",
             "https://www.jobkorea.co.kr/Search/?stext=유니티&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=Unreal&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=Unity&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=Client+Programmer&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=Server+Programmer&careerType=1&tabType=recruit",
+            "https://www.jobkorea.co.kr/Search/?stext=Game+Developer&careerType=1&tabType=recruit",
             "https://www.jobkorea.co.kr/Search/?stext=게임&duty=1000240&careerType=1&tabType=recruit"
         ]
 
@@ -165,6 +170,11 @@ class JobCrawler:
                     
                     # 잡코리아 기본 채용 공고 리스트 선택자
                     items = soup.select('.list-default .list-post')
+                    if not items:
+                        items = soup.select('.list-post') # Fallback 1
+                    if not items:
+                        items = soup.select('.post-list-info') # Fallback 2 (will need careful parent navigation)
+                        
                     if not items:
                         break # 아이템이 없으면 다음 URL로
 
