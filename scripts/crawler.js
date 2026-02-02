@@ -22,7 +22,11 @@ async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
         const config = {
             timeout: 10000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
                 ...options.headers
             },
             ...options
@@ -424,37 +428,50 @@ const Crawler = {
                     const html = await fetchHtml(url);
                     const $ = cheerio.load(html);
 
-                    let items = $('.list-default .list-post');
-                    // Fallback selectors if the primary one fails
-                    if (items.length === 0) items = $('.list-post');
-                    if (items.length === 0) items = $('.post-list-info').closest('li');
+                    // 잡코리아 페이지 구조가 Next.js로 변경됨에 따라 유연한 선택자 사용
+                    // 1. /Recruit/GI_Read 링크를 포함하는 모든 a 태그 찾기
+                    let items = $('a[href*="/Recruit/GI_Read"]').closest('li');
+                    if (items.length === 0) items = $('a[href*="/Recruit/GI_Read"]').closest('div[class*="styles_"]');
+                    if (items.length === 0) items = $('.list-default .list-post'); // 구 버전 대응
 
                     if (items.length === 0) {
                         // console.log(`[JobKorea] No items found for ${query} on page ${page}`);
-                        break;
+                        continue;
                     }
 
                     items.each((i, el) => {
                         try {
                             const post = $(el);
-                            const titleEl = post.find('.post-list-info a.title').length > 0 ? post.find('.post-list-info a.title') : post.find('.title');
-
+                            // 제목 및 링크 추출 (다양한 클래스 패턴 대응)
+                            const titleEl = post.find('a[href*="/Recruit/GI_Read"]');
                             if (titleEl.length === 0) return;
 
                             const href = titleEl.attr('href');
-                            if (!href || !href.includes('/Recruit/GI_Read')) return;
+                            if (!href) return;
 
                             const link = normalizeLink('https://www.jobkorea.co.kr' + href);
                             if (seenLinks.has(link)) return;
                             seenLinks.add(link);
 
-                            const position = titleEl.attr('title') || titleEl.text().trim();
+                            // 제목 텍스트 (줄바꿈 및 공백 정리)
+                            const position = titleEl.text().trim().replace(/\s+/g, ' ');
+                            if (!position) return;
 
-                            const companyEl = post.find('.post-list-corp .name').length > 0 ? post.find('.post-list-corp .name') : post.find('.name');
-                            const company = companyEl.text().strip ? companyEl.text().trim() : "잡코리아 채용";
+                            // 회사명 추출 (이미지 alt나 주변 텍스트에서 찾기)
+                            let company = post.find('img[alt$="로고"]').attr('alt')?.replace(' 로고', '') ||
+                                post.find('[class*="company"]').text().trim() ||
+                                post.find('.name').text().trim();
 
-                            const dateEl = post.find('.post-list-info .date').length > 0 ? post.find('.post-list-info .date') : post.find('.date');
-                            const deadlineText = dateEl.text().trim();
+                            if (!company || company.length < 2) {
+                                // 주변의 강력한 후보군 찾기
+                                company = post.find('a[href*="/company/"]').first().text().trim();
+                            }
+
+                            if (!company) company = "잡코리아 채용";
+
+                            // 마감일 추출
+                            const deadlineText = post.find('[class*="date"]').text().trim() ||
+                                post.find('.date').text().trim();
 
                             const job = {
                                 company,

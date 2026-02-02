@@ -8,8 +8,10 @@ class JobCrawler:
     def __init__(self, api_url):
         self.api_url = api_url
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Connection': 'keep-alive'
         }
         self.senior_keywords = [
             '미들급', '리드급', '시니어', 'senior', 'lead', '팀장', '파트장', '실장', 
@@ -142,7 +144,6 @@ class JobCrawler:
         jobs = []
         
         # 검색 URL 목록 (신입 전용 필터 적용: careerType=1)
-        # 1000240: 게임기획/개발/운영 직무 코드
         base_urls = [
             "https://www.jobkorea.co.kr/Search/?stext=언리얼&careerType=1&tabType=recruit",
             "https://www.jobkorea.co.kr/Search/?stext=유니티&careerType=1&tabType=recruit",
@@ -158,7 +159,6 @@ class JobCrawler:
 
         for base_url in base_urls:
             print(f"  Searching: {base_url}...")
-            # 페이지네이션 (1~3페이지)
             for page in range(1, 4):
                 try:
                     target_url = f"{base_url}&Page_No={page}"
@@ -168,53 +168,50 @@ class JobCrawler:
                         
                     soup = BeautifulSoup(res.text, 'html.parser')
                     
-                    # 잡코리아 기본 채용 공고 리스트 선택자
-                    items = soup.select('.list-default .list-post')
+                    # 잡코리아 기본 채용 공고 리스트 선택자 (Next.js 대응)
+                    items = soup.select('a[href*="/Recruit/GI_Read"]')
+                    
                     if not items:
-                        items = soup.select('.list-post') # Fallback 1
-                    if not items:
-                        items = soup.select('.post-list-info') # Fallback 2 (will need careful parent navigation)
-                        
+                        # Fallback: legacy list items
+                        items = soup.select('.list-default .list-post') or soup.select('.list-post') or soup.select('.post-list-info')
+
                     if not items:
                         break # 아이템이 없으면 다음 URL로
 
-                    for item in items:
+                    for element in items:
                         try:
-                            # 링크 및 제목 추출
-                            post_link_el = item.select_one('.post-list-info a.title')
-                            if not post_link_el:
-                                post_link_el = item.select_one('.title') # Fallback
+                            # element가 a 태그인지 아니면 컨테이너인지 확인
+                            if element.name == 'a':
+                                a_tag = element
+                                item = a_tag.find_parent(['li', 'div'])
+                            else:
+                                item = element
+                                a_tag = item.select_one('a[href*="/Recruit/GI_Read"]')
                             
-                            if not post_link_el: continue
-
-                            href = post_link_el.get('href')
-                            if not href or '/Recruit/GI_Read' not in href:
-                                continue
-                                
+                            if not item or not a_tag: continue
+                            
+                            href = a_tag.get('href')
+                            if not href: continue
+                            
                             link = "https://www.jobkorea.co.kr" + href
-                            
-                            if link in seen_links:
-                                continue
+                            if link in seen_links: continue
                             seen_links.add(link)
 
-                            position = post_link_el.get('title') or post_link_el.text.strip()
-                            
-                            # 회사명 추출
-                            company_el = item.select_one('.post-list-corp .name')
-                            if not company_el:
-                                company_el = item.select_one('.name') # Fallback
-                            company = company_el.text.strip() if company_el else "잡코리아 채용"
+                            position = a_tag.get('title') or a_tag.get_text().strip()
+                            if not position: continue
 
-                            # 마감일 추출
-                            date_el = item.select_one('.post-list-info .date')
-                            if not date_el:
-                                date_el = item.select_one('.date')
+                            # 회사명 추출
+                            company_el = item.select_one('img[alt$="로고"]')
+                            company = company_el.get('alt').replace(' 로고', '') if company_el else None
                             
-                            deadline = None
-                            if date_el:
-                                date_text = date_el.text.strip()
-                                # "~ 02/09(일)" 형식 파싱
-                                deadline = self.parse_date(date_text)
+                            if not company:
+                                corp_link = item.select_one('a[href*="/company/"]')
+                                company = corp_link.get_text().strip() if corp_link else "잡코리아 채용"
+
+                            # 마감일 추출 (클래스명이 유동적이므로 텍스트 패턴 매칭 등 고려)
+                            deadline_el = item.select_one('.date') or item.find(lambda t: t.name == "span" and "~" in t.text)
+                            deadline_text = deadline_el.get_text().strip() if deadline_el else "상시채용"
+                            deadline = self.parse_date(deadline_text)
 
                             # 카테고리 추론
                             category = '기타'
@@ -238,7 +235,6 @@ class JobCrawler:
                             if self.is_valid_job(job_item):
                                 jobs.append(job_item)
                         except Exception as e:
-                            # print(f"  Info extraction error: {e}")
                             continue
 
                 except Exception as e:
@@ -256,8 +252,6 @@ class JobCrawler:
         return None
 
     def sync_to_db(self, jobs):
-        # API_URL이 절대 경로여야 파이썬에서 호출 가능합니다.
-        # 예: http://localhost:3000/tables/job_postings
         if not self.api_url.startswith('http'):
             print("Error: API_URL must be a full URL (starting with http)")
             return
@@ -270,7 +264,7 @@ class JobCrawler:
                 data = res.json()
                 if isinstance(data, dict) and 'data' in data:
                     existing_links = {job.get('link') for job in data['data'] if job.get('link')}
-                elif isinstance(data, list): # Handle case where API returns a list directly
+                elif isinstance(data, list):
                     existing_links = {job.get('link') for job in data if job.get('link')}
         except Exception as e:
             print(f"Warning: Could not fetch existing jobs: {e}")
@@ -285,19 +279,16 @@ class JobCrawler:
                 continue
                 
             try:
-                # API 구조에 맞게 데이터 전송
                 res = requests.post(self.api_url, json=job)
                 if res.status_code in [200, 201]:
                     success_count += 1
-                    existing_links.add(job.get('link')) # Add to existing_links to prevent duplicates within the same run
+                    existing_links.add(job.get('link'))
             except Exception as e:
                 print(f"Error syncing job: {e}")
         print(f"Done! Successfully synced {success_count} jobs, Skipped {skipped_count} duplicates.")
 
 def main():
-    # 이 부분은 실제 구동 환경의 URL로 변경해야 합니다.
-    # 대시보드가 실행 중인 서버 주소와 포트를 입력하세요.
-    TARGET_API = "http://localhost:3000/tables/job_postings"
+    TARGET_API = "https://mtfrnwqhklezedkmhatk.supabase.co/rest/v1/job_postings"
     
     crawler = JobCrawler(TARGET_API)
     
