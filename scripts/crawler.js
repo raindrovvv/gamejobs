@@ -325,7 +325,8 @@ const Crawler = {
     async crawlGamejob() {
         console.log('Crawling Gamejob (Duty-based for Newcomers)...');
         const jobs = [];
-        const duties = [0, 1, 2, 3, 4, 5, 6, 7];
+        // 직무 코드 (1: 기획, 2: 프로그래밍, 3: 아트 등 추정 - 사용자가 제안한 URL 패턴 적용)
+        const duties = [1, 2, 3, 4, 5, 6, 7];
         const seenLinks = new Set();
 
         for (const duty of duties) {
@@ -333,27 +334,38 @@ const Crawler = {
             try {
                 await sleep(2000 + Math.random() * 1000);
 
-                const url = `https://www.gamejob.co.kr/List_GI/GIB_List.asp?Part_No=${duty}&Search_Word=%BD%C5%C0%D4`;
-                const html = await fetchHtml(url, 'euc-kr');
+                // 사용자 제안 URL: https://www.gamejob.co.kr/Recruit/joblist?menucode=duty
+                const url = `https://www.gamejob.co.kr/Recruit/joblist?menucode=duty&duty=${duty}`;
+                const html = await fetchHtml(url);
                 const $ = cheerio.load(html);
 
-                $('.list tr[class^="row"]').each((i, el) => {
-                    const company = $(el).find('.col-company a').text().trim();
-                    const position = $(el).find('.col-subject a').text().trim();
-                    if (!company) return;
+                // 리스트 선택자 (crawlGamejobDuty 참고 및 일반적인 리스트 구조 시도)
+                let items = $('.list .list-item');
+                if (items.length === 0) items = $('.recruit-list .list-item');
+                if (items.length === 0) items = $('div[class*="list"] li'); // Fallback
 
-                    const href = $(el).find('.col-subject a').attr('href');
+                items.each((i, el) => {
+                    const li = $(el);
+                    const company = li.find('.company').text().trim() || li.find('.col-company').text().trim();
+                    const titleEl = li.find('.tit a').length > 0 ? li.find('.tit a') : li.find('.col-subject a');
+                    const position = titleEl.text().trim();
+
+                    if (!company || !position) return;
+
+                    const href = titleEl.attr('href');
                     if (!href) return;
 
-                    const normalizedLink = normalizeLink('https://www.gamejob.co.kr' + href);
-                    if (seenLinks.has(normalizedLink)) return;
-                    seenLinks.add(normalizedLink);
+                    const link = normalizeLink('https://www.gamejob.co.kr' + href);
+                    if (seenLinks.has(link)) return;
+                    seenLinks.add(link);
+
+                    const deadlineText = li.find('.date').text().trim() || li.find('.col-date').text().trim();
 
                     const job = {
                         company,
                         position,
-                        link: normalizedLink,
-                        deadline: DateUtils.parse($(el).find('.col-date').text().trim()),
+                        link,
+                        deadline: DateUtils.parse(deadlineText),
                         job_type: '신입',
                         category: '게임',
                         tags: ['게임잡'],
@@ -373,49 +385,13 @@ const Crawler = {
 
     // 4. 게임잡 - 직무별 채용공고 (추가 목록)
     async crawlGamejobDuty() {
-        console.log('Crawling Gamejob Duty List...');
-        const jobs = [];
-        try {
-            await sleep(1000);
-            const url = `https://www.gamejob.co.kr/Recruit/joblist?menucode=duty&duty=1`;
-            const html = await fetchHtml(url);
-            const $ = cheerio.load(html);
-
-            $('.list.cf li').each((i, el) => {
-                const li = $(el);
-                const company = li.find('.company strong').text().trim();
-                const position = li.find('.description a strong').text().trim() || li.find('.description a').text().trim();
-                const path = li.find('.description a').attr('href');
-
-                if (!company || !position || !path) return;
-
-                const link = normalizeLink('https://www.gamejob.co.kr' + path);
-                const deadlineText = li.find('.dday').text().trim();
-
-                const job = {
-                    company,
-                    position,
-                    link,
-                    deadline: DateUtils.parse(deadlineText),
-                    job_type: '신입/경력',
-                    category: '게임',
-                    tags: ['게임잡'],
-                    is_active: true
-                };
-
-                if (Filter.isValid(job)) {
-                    jobs.push(job);
-                }
-            });
-            return jobs;
-        } catch (e) {
-            console.error('Gamejob Duty Error:', e.message);
-            return jobs;
-        }
+        // 중복 방지를 위해 위 함수로 통합 운영하거나, 특정 목적이 있다면 유지.
+        // 현재는 crawlGamejob이 개선되었으므로 빈 배열 반환하여 중복 호출 방지 (선택적)
+        return [];
     },
 
     async crawlJobKorea() {
-        console.log('Crawling JobKorea (Improved - Multiple Queries)...');
+        console.log('Crawling JobKorea (Search-based)...');
 
         const searchQueries = [
             { query: '언리얼', duty: '' },
@@ -441,57 +417,40 @@ const Crawler = {
             for (let page = 1; page <= maxPage; page++) {
                 try {
                     const encodedQuery = encodeURIComponent(query);
-                    const url = `https://www.jobkorea.co.kr/recruit/joblist?stext=${encodedQuery}${duty ? `&duty=${duty}` : ''}&careerType=1&Page_No=${page}`;
+                    // 사용자 요청에 따라 /Search/ 경로 복원 및 headers 강화 활용
+                    const url = `https://www.jobkorea.co.kr/Search/?stext=${encodedQuery}${duty ? `&duty=${duty}` : ''}&careerType=1&Page_No=${page}`;
 
                     await sleep(2000 + Math.random() * 1000);
 
                     const html = await fetchHtml(url);
                     const $ = cheerio.load(html);
 
-                    let items = $('.devloopArea');
-                    if (items.length === 0) items = $('a[href*="/Recruit/GI_Read"]').closest('li');
-                    if (items.length === 0) items = $('.list-default .list-post');
+                    let items = $('.list-default .list-post');
+                    if (items.length === 0) items = $('.post-list-info'); // Legacy
+                    if (items.length === 0) items = $('.devloopArea'); // Fallback
 
                     if (items.length === 0) continue;
 
                     items.each((i, el) => {
                         try {
                             const post = $(el);
-                            const allGiLinks = post.find('a[href*="/Recruit/GI_Read"]');
-                            if (allGiLinks.length === 0) return;
+                            const titleEl = post.find('a[href*="/Recruit/GI_Read"]');
+                            if (titleEl.length === 0) return;
 
-                            let titleEl = allGiLinks.last();
-                            let href = titleEl.attr('href');
-                            let position = titleEl.text().trim().replace(/\s+/g, ' ');
-
-                            if (!position && allGiLinks.length > 1) {
-                                titleEl = allGiLinks.eq(allGiLinks.length - 2);
-                                href = titleEl.attr('href');
-                                position = titleEl.text().trim().replace(/\s+/g, ' ');
-                            }
-
-                            if (!href || !position) return;
+                            const href = titleEl.attr('href');
+                            if (!href) return;
 
                             const link = normalizeLink('https://www.jobkorea.co.kr' + href);
                             if (seenLinks.has(link)) return;
                             seenLinks.add(link);
 
-                            let company = post.find('img').attr('alt')?.replace(' 썸네일', '') ||
-                                post.find('.name').text().trim() ||
-                                post.find('a[href*="/Recruit/Co_Read"]').first().text().trim();
+                            const position = titleEl.attr('title') || titleEl.text().trim();
 
-                            if (!company || company.length < 2) {
-                                const link0Text = post.find('a').eq(0).text().trim();
-                                const link1Text = post.find('a').eq(1).text().trim();
-                                company = (link0Text && link0Text !== position) ? link0Text :
-                                    (link1Text && link1Text !== position) ? link1Text : "";
-                            }
-
+                            let company = post.find('.name').attr('title') || post.find('.name').text().trim();
+                            if (!company) company = post.find('a[href*="/company/"]').text().trim();
                             if (!company) company = "잡코리아 채용";
 
-                            const deadlineText = post.find('.deadline').text().trim() ||
-                                post.find('.date').text().trim() ||
-                                post.find('span:contains("~")').text().trim();
+                            const deadlineText = post.find('.date').text().trim() || post.find('.option .date').text().trim();
 
                             const job = {
                                 company,
