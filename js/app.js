@@ -637,15 +637,32 @@ function applyFiltersAndRender() {
 
         // --- NEW: Newcomer/Intern Validity Check ---
         // These keywords definitively mean it's for newcomers
-        const newcomerKeywords = ['신입', '인턴', 'intern', '경력무관', '졸업예정', 'entry', 'junior'];
+        const newcomerKeywords = ['신입', '인턴', 'intern', '경력무관', '졸업예정', 'entry', 'junior', '주니어'];
         const isExplicitlyNewcomer = newcomerKeywords.some(k => jobText.includes(k));
 
         // These keywords usually mean it's for experienced professionals
-        // Regular expressions for "X년차", "X년 이상"
-        const yearRegex = /\d+\s*년/;
-        const experiencedKeywords = ['경력직', '시니어', 'senior', 'experienced', '팀장', '파트장', 'lead', '전문가', '채용직급:'];
+        const experiencedKeywords = [
+            '경력직', '시니어', 'senior', 'experienced', '팀장', '파트장', 'lead', '리드',
+            '전문가', 'expert', '채용직급:', '미들', 'middle', '디렉터', 'director', '매니저', 'manager',
+            '실장', '본부장', 'pd', 'pm', 'adhoc'
+        ];
 
-        const hasExclusionKeyword = experiencedKeywords.some(k => jobText.includes(k)) || yearRegex.test(jobText);
+        // Stricter title check: Keywords in title are immediate exclusion
+        const seniorTitleKeywords = ['미들급', '리드급', '시니어', 'senior', 'lead', '팀장', '파트장', '원화가(경력)', '개발(경력)', '경력공고'];
+        const isSeniorTitle = seniorTitleKeywords.some(k => title.includes(k));
+
+        // Regular expressions for "X년차", "X년 이상", "X년↑"
+        // Block if 2+ years are mentioned, but allow 0-1
+        const yearMatch = jobText.match(/(\d+)\s*년/);
+        const yearsRequired = yearMatch ? parseInt(yearMatch[1], 10) : 0;
+        const isExperiencedYear = yearsRequired >= 2;
+
+        const hasExclusionKeyword = experiencedKeywords.some(k => jobText.includes(k)) || isExperiencedYear || isSeniorTitle;
+
+        // CRITICAL: If the TITLE itself shows seniority (e.g., "Lead", "5년 이상"), exclude it regardless of tags
+        if (isSeniorTitle || (isExperiencedYear && yearsRequired >= 3)) {
+            return false;
+        }
 
         // If it looks experienced but IS NOT explicitly marked as newcomer/intern/무관, exclude it
         if (hasExclusionKeyword && !isExplicitlyNewcomer) {

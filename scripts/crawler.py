@@ -11,6 +11,32 @@ class JobCrawler:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*'
         }
+        self.senior_keywords = [
+            '미들급', '리드급', '시니어', 'senior', 'lead', '팀장', '파트장', '실장', 
+            '디렉터', 'director', '전문가', 'expert', '경력직', '경력채용', 'manager'
+        ]
+
+    def is_valid_job(self, job):
+        """신입/인턴 여부 검증 필터"""
+        company = job.get('company', '').lower()
+        position = job.get('position', '').lower()
+        text = company + " " + position
+        
+        # 1. 시니어 키워드 체크
+        if any(k in text for k in self.senior_keywords):
+            return False
+            
+        # 2. 연차 체크 (2년 이상 배제)
+        year_match = re.search(r'(\d+)\s*년', text)
+        if year_match:
+            years = int(year_match.group(1))
+            if years >= 2:
+                # '신입'이 포함되어 있어도 3년 이상이면 배제
+                if years >= 3: return False
+                # 2년+ 인데 '신입' 키워드 없으면 배제
+                if '신입' not in text and '인턴' not in text: return False
+                
+        return True
 
     def fetch_wanted(self):
         """원티드 API 이용 크롤링"""
@@ -23,7 +49,7 @@ class JobCrawler:
             data = res.json()
             
             for item in data.get('data', []):
-                jobs.append({
+                job_item = {
                     'company': item['company']['name'],
                     'position': item['position'],
                     'link': f"https://www.wanted.co.kr/wd/{item['id']}",
@@ -32,7 +58,9 @@ class JobCrawler:
                     'category': '프로그래밍',
                     'tags': ['원티드', '게임', '신입'],
                     'is_active': True
-                })
+                }
+                if self.is_valid_job(job_item):
+                    jobs.append(job_item)
         except Exception as e:
             print(f"Wanted error: {e}")
         return jobs
@@ -50,12 +78,12 @@ class JobCrawler:
             for item in items:
                 try:
                     company = item.select_one('.corp_name a').text.strip()
-                    position_el = item.select_one('.job_tit a')
-                    position = position_el.text.strip()
-                    link = "https://www.saramin.co.kr" + position_el['href']
+                    pos_el = item.select_one('.job_tit a')
+                    position = pos_el.text.strip()
+                    link = "https://www.saramin.co.kr" + pos_el['href']
                     deadline = self.parse_date(item.select_one('.date').text)
                     
-                    jobs.append({
+                    job_item = {
                         'company': company,
                         'position': position,
                         'link': link,
@@ -64,7 +92,9 @@ class JobCrawler:
                         'category': '기타',
                         'tags': ['사람인', '게임'],
                         'is_active': True
-                    })
+                    }
+                    if self.is_valid_job(job_item):
+                        jobs.append(job_item)
                 except: continue
         except Exception as e:
             print(f"Saramin error: {e}")
@@ -89,7 +119,7 @@ class JobCrawler:
                     link = "https://www.gamejob.co.kr" + pos_el['href']
                     deadline = self.parse_date(row.select_one('.col-date').text)
                     
-                    jobs.append({
+                    job_item = {
                         'company': company,
                         'position': position,
                         'link': link,
@@ -98,7 +128,9 @@ class JobCrawler:
                         'category': '게임',
                         'tags': ['게임잡'],
                         'is_active': True
-                    })
+                    }
+                    if self.is_valid_job(job_item):
+                        jobs.append(job_item)
                 except: continue
         except Exception as e:
             print(f"Gamejob error: {e}")
@@ -182,7 +214,7 @@ class JobCrawler:
                             elif any(k in pos_lower for k in ['아트', '그래픽', '디자인', '모델러', '이펙트']): category = '아트'
                             elif 'pm' in pos_lower or '사업' in pos_lower: category = '마케팅'
 
-                            jobs.append({
+                            job_item = {
                                 'company': company,
                                 'position': position,
                                 'link': link,
@@ -191,7 +223,10 @@ class JobCrawler:
                                 'category': category,
                                 'tags': ['잡코리아', '게임'],
                                 'is_active': True
-                            })
+                            }
+                            
+                            if self.is_valid_job(job_item):
+                                jobs.append(job_item)
                         except Exception as e:
                             # print(f"  Info extraction error: {e}")
                             continue

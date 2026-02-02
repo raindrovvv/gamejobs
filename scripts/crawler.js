@@ -88,8 +88,15 @@ const Filter = {
     EXCLUDE: [
         '의료', '바이오', '금융', '은행', '증권', '보험', '회계', '세무',
         '반도체', '자율주행', '하드웨어', '제조', '건설', '공사', '공단', '병원', '약사',
-        '쇼핑몰', '커머스', '물류', '택배', '병원', '남동발전', '카지노', '저축은행',
+        '쇼핑몰', '커머스', '물류', '택배', '남동발전', '카지노', '저축은행',
         '광고대행', 'ae', '기업브랜딩', '마케팅전문'
+    ],
+
+    // 4. 경력직 배제 키워드 (신입 대상이 아닌 경우)
+    EXCLUDE_SENIOR: [
+        '미들급', '리드급', '시니어', 'senior', 'lead', '팀장', '파트장', '원화가(경력)', '개발(경력)',
+        '실장', '디렉터', 'director', '전문가', 'expert', '경력직', '경력채용', '경력 5년', '경력 3년',
+        '경력 4년', '경력 6년', '경력 7년', '경력 8년', '경력 10년', 'manager'
     ],
 
     isValid(job) {
@@ -99,6 +106,18 @@ const Filter = {
 
         // 규칙 1: 제외 키워드가 하나라도 있으면 무조건 탈락
         if (this.EXCLUDE.some(term => text.includes(term.toLowerCase()))) return false;
+
+        // 규칙 1-1: 경력직 키워드 배제
+        if (this.EXCLUDE_SENIOR.some(term => text.includes(term.toLowerCase()))) return false;
+
+        // 규칙 1-2: X년차 이상 배 배제 (RegEx)
+        const yearMatch = text.match(/(\d+)\s*년/);
+        if (yearMatch && parseInt(yearMatch[1], 10) >= 2) {
+            // "신입"이라는 단어가 함께 있으면 오탐 가능성이 있으니 한번 더 체크
+            if (!text.includes('신입') && !text.includes('인턴')) return false;
+            // 3년 이상이면 신입과 같이 써있어도 배제 (보통 '신입/경력'이어도 3년 이상 우대면 신입이 뽑히기 힘듦)
+            if (parseInt(yearMatch[1], 10) >= 3) return false;
+        }
 
         // 규칙 2: 게임 관련 컨텍스트가 반드시 하나는 있어야 함
         const hasContext = this.CONTEXT.some(term => {
